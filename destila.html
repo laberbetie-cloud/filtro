@@ -116,8 +116,11 @@ async function generateMapAndExtractVerses() {
         localStorage.setItem('principioOrganizador', principioOrganizador);
     }
 
-    const pregRegex = /(?:(?:Question|Pregunta)\s*\d+)/i;
+    //const pregRegex = /(?:(?:Question|Pregunta)\s*\d+)/i;
+	 // 🎯 Detecta si la línea empieza con número, tiene un signo de pregunta, y opcionalmente citas al final
+    const pregRegex = /^\s*\d+[\s.]*.*\?.*$/i;
     const citaRegex = /\(([^)]+)\)/g;
+    
 
     lines.forEach(line => {
         const lineClean = line.trim();
@@ -125,7 +128,8 @@ async function generateMapAndExtractVerses() {
 
         if (pregRegex.test(lineClean)) {
             questionCounter++;
-            let preguntaTextoLimpio = lineClean.replace(/^\d+\.\s*/, '');
+let preguntaTextoLimpio = lineClean.replace(/^\d+[\s.]*/, '');
+            //let preguntaTextoLimpio = lineClean.replace(/^\d+\.\s*/, '');
             mapaEstudio[questionCounter] = { textoOriginal: preguntaTextoLimpio, citas: [], textosCompletosBLB: [] };
         }
 
@@ -246,6 +250,4 @@ async function matchBLBTextWithMap() {
     }
 }
 </script>
-
-
 

@@ -1,0 +1,5089 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <title>POS Familiar</title>
+    
+    <style>
+        :root { 
+            --dark: #2c3e50; 
+            --green: #27ae60; 
+            --orange: #e67e22; 
+            --blue: #3498db; 
+            --bg: #f4f7f6; 
+        }
+        
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            display: flex; 
+            height: 100vh; 
+            background: var(--bg); 
+            overflow: hidden; 
+        }
+        
+        /* Layout */
+       /* ==========================================================================
+   🖥️ CONFIGURACIÓN DEL CONTENEDOR POS (VISTA FIJA DE ESCRITORIO)
+   ========================================================================== */
+#pos-side { 
+    width: 100%; 
+    border-right: 2px solid #ddd; 
+    
+    /* 🔥 BLOQUEO DE SCROLL GENERAL: Forzamos comportamiento de App Fija */
+    display: flex !important; 
+    flex-direction: column !important; 
+    height: 100vh !important;       /* Ocupa exactamente el alto de la pantalla */
+    max-height: 100vh !important;   /* Prohibido estirarse más allá del viewport */
+    overflow: hidden !important;     /* Eliminamos el scroll de toda la ventana */
+    padding-bottom: 10px !important; /* Margen sutil de seguridad abajo */
+    box-sizing: border-box !important;
+    flex-grow: 1 !important;  /* CAMBIO CLAVE AQUÍ */
+}
+
+        
+        /* UI Components */
+        .header-box { 
+            background: var(--dark); 
+            color: white; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 8px; 
+            padding: 10px; 
+        }
+        
+        .btn { 
+            padding: 12px; 
+            border: none; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+        }
+        
+        /* ==========================================================================
+   🛒 REEMPLAZO UNIFICADO: CENTRADO Y ESTILIZADO DE LA BOLSA DE ENTREGA
+   ========================================================================== */
+
+/* Bolsa y Caja - Contenedor Principal Centrado */
+.seccion { 
+    width: 100% !important;
+    max-width: 1100px !important; /* Acota el ancho para que no se desparrame en pantallas grandes */
+    margin-left: auto !important;  /* El truco de márgenes automáticos izquierdo y derecho */
+    margin-right: auto !important; /* logra que todo el bloque se clave en el centro */
+    margin-top: 15px !important;
+    margin-bottom: 15px !important;
+    
+    background: white !important; 
+    padding: 20px !important; 
+    border-radius: 14px !important; /* Esquinas más suaves en sintonía con tus botones */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; 
+    border: 1px solid #dfe4ea !important;
+    box-sizing: border-box !important;
+}   
+
+/* El Título: Bolsa de Entrega */
+.seccion strong {
+    display: flex !important;
+    align-items: center !important;
+    font-size: 1.25rem !important;
+    color: #2d3436 !important;
+    margin-bottom: 15px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 3px solid #00b894 !important; /* Mantenemos tu verde identitario */
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Contenedor dinámico de la lista con Scroll Vertical */
+#lista-bolsa {
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 5px 0 !important;
+    
+    /* Nuevas propiedades para el scroll */
+    max-height: 240px !important;    /* Ajusta este alto (aprox. 3 o 4 ítems visibles a la vez) */
+    overflow-y: auto !important;     /* Activa el scroll vertical si el contenido supera el max-height */
+    overflow-x: hidden !important;   /* Evita cualquier scroll horizontal parásito */
+}
+/* Personalización de la barra de scroll para #lista-bolsa (Chrome/Safari/Edge) */
+#lista-bolsa::-webkit-scrollbar {
+    width: 6px !important;
+}
+#lista-bolsa::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+#lista-bolsa::-webkit-scrollbar-thumb {
+    background: #dfe4ea !important; /* Un gris muy suave que combina con tu línea discontinua */
+    border-radius: 4px !important;
+}
+
+/* Estilos de los ítems inyectados (Manteniendo tu orden impecable de lectura) */
+.item-bolsa-grupo {
+    width: 100% !important; 
+    display: block !important;
+    clear: both !important;
+    border-bottom: 2px solid #f1f2f6 !important;
+    padding: 10px 0 !important;
+}
+
+.item-bolsa {
+    width: 100% !important; 
+    display: flex !important; 
+    justify-content: space-between !important; /* Separa el nombre a la izq y el precio/X a la der */
+    align-items: center !important;
+    margin-bottom: 5px !important;
+    font-size: 1.1rem !important; 
+    font-weight: 500 !important;
+    line-height: 1.2 !important;
+    padding: 6px 0 !important;
+}
+
+/* Estado visual cuando la bolsa no tiene productos cargados aún */
+#lista-bolsa:empty::after {
+    content: "Esperando productos... 🍽️" !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    height: 70px !important;
+    color: #b2bec3 !important;
+    font-style: italic !important;
+    font-size: 15px !important;
+}
+
+/* El Bloque del Total ($0) estético en su esquina de factura */
+#total-bolsa {
+    text-align: right !important;
+    font-size: 1.8rem !important; /* Tamaño imponente para control rápido */
+    font-weight: 900 !important;
+    color: #2d3436 !important;
+    margin-top: 15px !important;
+    padding-top: 10px !important;
+    border-top: 1px dashed #dfe4ea !important; /* Línea discontinua muy limpia */
+}
+        
+        #btn-enviar {
+            margin-top: 5px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            padding: 12px;
+        }
+        
+        /* Modal */
+        #modal { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.8); 
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 1000; 
+        }
+        
+        .modal-content { 
+            background: white; 
+            width: 90%; 
+            max-width: 450px; 
+            padding: 20px; 
+            border-radius: 15px; 
+        }
+        
+        .pastilla { 
+            display: inline-block; 
+            padding: 8px 12px; 
+            background: #eee; 
+            margin: 4px; 
+            border-radius: 15px; 
+            cursor: pointer; 
+            font-size: 0.9rem; 
+        }
+
+        /* --- CATEGORÍAS EN SCROLL HORIZONTAL --- */
+        #menu-cats {
+            display: flex !important;
+            align-items: center;
+            height: 65px;         
+            min-height: 65px;     
+            max-height: 65px;     
+            overflow-x: auto;
+            overflow-y: hidden;   
+            gap: 10px;
+            padding: 0 10px;      
+            background: #f1f2f6;
+            white-space: nowrap;
+            border-bottom: 2px solid #dfe4ea;
+            position: -webkit-sticky; 
+            position: sticky;
+            top: 0;                
+            z-index: 1000;         
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            cursor: default; 
+            -ms-overflow-style: none;  
+            scrollbar-width: none;  
+        }
+
+        #menu-cats::-webkit-scrollbar { 
+            display: none; 
+        } 
+
+        .btn-cat {
+            flex: 0 0 auto; 
+            min-width: 100px;
+            height: 50px !important;
+            border-radius: 25px; 
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .btn-selected {
+            background: #00b894 !important;
+            color: white !important;
+            border-color: #00b894 !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transform: scale(1.02);
+        }
+        
+        .btn-cat.active {
+            background: #007bff !important; 
+            color: white !important;
+            border-color: #00b894;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transform: scale(1.03);
+        }
+
+        /* ==========================================================================
+   🍗 CONTEXTO: SECCIÓN DE PRODUCTOS (Pollo Broster, Chuleta, etc.)
+   ========================================================================== */
+
+/* ==========================================================================
+   🍗 FILA DE PRODUCTOS (Pollo Broster, Chuleta, etc.)
+   ========================================================================== */
+
+/* El contenedor padre actuará como una fila horizontal con scroll */
+#menu-prods {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    
+    /* Espacio físico real garantizado en pantalla */
+    width: 100% !important;
+    height: 90px !important; 
+    min-height: 90px !important;
+    
+    /* Scroll horizontal activo y scroll vertical bloqueado */
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    
+    gap: 10px !important;
+    padding: 10px !important;
+    background-color: #f1f2f6 !important; /* Fondo tenue para enmarcar la zona */
+    border-radius: 8px !important;
+    margin-bottom: 15px !important;
+    box-sizing: border-box !important;
+
+    /* Ocultar la barra de scroll visual en Firefox e IE */
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+
+/* Ocultar barra de scroll en Chrome, Safari y Edge */
+#menu-prods::-webkit-scrollbar {
+    display: none !important;
+}
+
+/* Tus botones originales optimizados para la fila elástica */
+.btn-prod {
+    flex: 0 0 auto !important; /* Evita que el contenedor estruje o deforme el botón */
+    width: 140px !important;   /* Tu ancho original */
+    height: 70px !important;   /* Tu alto original */
+    background-color: #007bff !important; /* Tu azul original */
+    color: white !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    white-space: normal !important; /* Permite que los nombres largos salten de línea */
+    box-sizing: border-box !important;
+    transition: all 0.2s ease !important; 
+}
+
+/* Mantener tus efectos de Hover y Active intactos */
+.btn-prod:hover, .btn-cat:hover {
+    filter: brightness(0.9) !important;
+    transform: translateY(-2px) !important; 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important; 
+}
+
+.btn-prod:active, .btn-cat:active {
+    transform: translateY(0px) !important; 
+    filter: brightness(0.8) !important; 
+}
+
+        .btn-prod:hover, .btn-cat:hover {
+            filter: brightness(0.9);
+            transform: translateY(-2px); 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+        }
+
+        .btn-prod:active, .btn-cat:active {
+            transform: translateY(0px); 
+            filter: brightness(0.8); 
+        }
+
+        #client-view {
+            position: fixed;
+            bottom: -100%;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            background: white;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+            transition: bottom 0.3s ease;
+            z-index: 3000;
+        }
+
+        #client-view.active { bottom: 0; }
+        #client-header { padding: 15px; background: var(--blue); color: white; text-align: center; font-weight: bold; }
+        #client-content { padding: 15px; overflow-y: auto; }
+
+        /* --- BOLSA DE COMPRAS --- */
+        #lista-bolsa {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            gap: 10px;
+            padding: 10px;
+            background: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #dfe4ea;
+        }
+
+        #lista-bolsa > div {
+            display: flex;
+            flex-direction: column; 
+            width: 100%;
+            padding: 15px 5px; 
+            border-bottom: 1px solid #f1f2f6;
+            box-sizing: border-box;
+        }
+
+        #lista-bolsa > div > div:first-child {
+            display: flex;
+            justify-content: space-between; 
+            align-items: center;
+            width: 100%;
+            margin-bottom: 5px; 
+        }
+
+        #lista-bolsa > div > div:first-child span:first-child { padding-right: 15px; }
+        
+        #lista-bolsa > div > div:last-child {
+            display: block;
+            word-wrap: break-word; 
+            overflow-wrap: break-word;
+            white-space: normal;
+            margin-top: 8px;       
+            padding-left: 12px;    
+            line-height: 1.5;      
+            color: #34495e;        
+            border-left: 2px solid #3498db; 
+        }
+
+        #lista-bolsa > div b, #lista-bolsa > div span:first-child {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2d3436;
+        }
+
+        #lista-bolsa > div > div:last-child b { color: #2980b9; font-weight: 800; }
+        
+        #lista-bolsa > div > div:first-child span:last-child {
+            font-weight: 800; 
+            color: #000;      
+            margin-left: 10px;
+            white-space: nowrap; 
+        }
+
+        #total-bolsa {
+            background-color: #f8f9fa; 
+            color: #2d3436;
+            font-size: 1.8rem;         
+            font-weight: 900;          
+            text-align: right;         
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.05); 
+        }
+
+        * --- TARJETAS DE ESPERA / PEDIDOS ACTIVOS --- */
+/* --- TARJETAS DE ESPERA / PEDIDOS ACTIVOS --- */
+/* 1. CONTROL DE TICKETS EN PARRILLA (Look del modal de salsas) */
+
+/* Bloque 1: Pedidos en proceso (Mantenimiento seguro para hora punta) */
+#contenedor-pedidos-activos {
+    display: flex !important;
+    flex-direction: row !important; 
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    background-color: #f8f9fa !important; 
+    border: 1px dashed #ced4da !important; 
+    border-radius: 8px !important;
+    
+    /* 🛠️ PROTECCIÓN HORA PUNTA: Evita que crezca infinitamente hacia abajo */
+    max-height: 140px !important;    /* Altura ideal para aprox. 2 filas de tickets */
+    overflow-y: auto !important;     /* Activa scroll vertical interno si se satura */
+    overflow-x: hidden !important;   /* Evita movimientos laterales parásitos */
+}
+
+/* Bloque 2: Por entregar / Cobrar */
+#contenedor-pedidos-cobro {
+    display: flex !important;
+    flex-direction: row !important; 
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    background-color: #f8f9fa !important; 
+    border: 1px dashed #ced4da !important; 
+    border-radius: 8px !important;
+    
+    /* 🛠️ PROTECCIÓN HORA PUNTA: Mismo comportamiento controlado */
+    max-height: 140px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+/* 2. Respiro base para la sección */
+.seccion-cobro {
+    display: block !important;
+    position: relative !important;
+    margin-bottom: 20px !important; /* Reducimos el margen drásticamente porque el scroll ya es interno */
+}
+     .tarjeta-espera {
+    background: #ffffff;
+    border: 1px solid #ddd;
+    border-left: 6px solid var(--orange);
+    padding: 10px 14px;             /* Un poco más compacto */
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    cursor: pointer;
+    font-family: sans-serif;
+    transition: all 0.3s ease;
+    
+    /* 🛠️ AJUSTE CLAVE: Comportamiento idéntico a las pastillas */
+    display: inline-flex !important;  
+    flex-direction: column;
+    width: auto !important;         /* Que el ancho lo dicte el contenido */
+    min-width: 160px !important;    /* Evita que se encojan demasiado */
+    max-width: 240px !important;    /* Evita que se estiren de forma exagerada */
+    box-sizing: border-box;
+}
+
+        .tarjeta-espera:hover { transform: scale(1.05); border-color: #28a745; }
+        .nombre-cliente-tarjeta { font-weight: bold; color: var(--dark); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .monto-tarjeta { color: #7f8c8d; font-size: 0.9em; font-weight: 600; }
+        .estado-punto { font-size: 1.2em; margin-left: 5px; }
+
+        .tarjeta-espera.listo {
+            border-left-color: #28a745 !important; 
+            background-color: #f0fff4;
+            border-color: #c3e6cb;
+        }
+        .tarjeta-espera.listo .estado-punto { color: #28a745; animation: latido-verde 1.5s infinite; }
+
+        @keyframes latido-verde { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        #notificacion-exito {
+            display: none; position: fixed; top: 20px; right: 20px; background-color: #27ae60; color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 10000; font-weight: bold; animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+
+        /* ==========================================================================
+   🛵 CONTENEDOR DE ORIGEN DE PEDIDOS (Presencial, WhatsApp, etc.)
+   ========================================================================== */
+
+/* Forzar al contenedor padre a comportarse como una fila horizontal elástica */
+div#origen-container.origen-container {
+    display: flex !important;
+    flex-direction: row !important; /* Alineación horizontal obligatoria */
+    flex-wrap: nowrap !important;   /* Evita que se salten de línea en pantallas chicas */
+    align-items: center !important;
+    justify-content: space-between !important; /* Distribuye el espacio equitativamente */
+    
+    width: 100% !important;
+    gap: 8px !important;            /* Separación uniforme entre botones */
+    margin-bottom: 12px !important;
+    box-sizing: border-box !important;
+}
+
+/* Estilo para cada botón individual (los labels internos) */
+div#origen-container.origen-container label.btn-origen {
+    flex: 1 1 0% !important;        /* Obliga a todos los botones a medir exactamente lo mismo */
+    min-width: 0 !important;        /* Previene desbordamientos extraños de texto */
+    height: 40px !important;        /* Altura compacta y estandarizada */
+    
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    
+    background-color: #ffffff !important;
+    color: #2d3436 !important;
+    border: 1px solid #dbdfea !important;
+    border-radius: 8px !important;   /* Esquinas suavizadas */
+    
+    font-family: system-ui, -apple-system, sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important; /* Evita que el texto se rompa en dos líneas */
+    
+    transition: all 0.2s ease-in-out !important;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Ocultar el input de radio nativo si usas el truco visual de botones */
+div#origen-container.origen-container label.btn-origen input[type="radio"] {
+    display: none !important;
+}
+
+/* ==========================================================================
+   🎨 ESTADOS ACTIVOS (Para cuando se selecciona una opción)
+   ========================================================================== */
+
+/* Si manejas una clase .active en el label mediante JavaScript: */
+div#origen-container.origen-container label.btn-origen.active {
+    background-color: #2ecc71 !important; /* Color verde como tu botón Presencial original */
+    color: #ffffff !important;
+    border-color: #2ecc71 !important;
+}
+
+/* Por si acaso la lógica activa aplica los estilos directamente cuando el input interno está :checked */
+div#origen-container.origen-container label.btn-origen:has(input:checked) {
+    background-color: #2ecc71 !important;
+    color: #ffffff !important;
+    border-color: #2ecc71 !important;
+    font-weight: 700 !important;
+}
+
+
+        /* ==========================================================================
+           MÓVILES / MEDIA QUERY REVISADA (Sin conflictos con botones inferiores)
+           ========================================================================== */
+        /* ==========================================================================
+   📱 AISLAMIENTO DE MÓVIL (Para no alterar tu hermosa versión de escritorio)
+   ========================================================================== */
+
+    @media (max-width: 768px) {
+    body { 
+        margin: 0 !important; 
+        display: flex !important; 
+        flex-direction: column !important;
+        width: 100% !important; 
+        overflow-x: hidden !important; 
+        overflow-y: auto !important;
+    }
+
+    #pos-side {
+        width: 100% !important;
+        min-height: 100vh !important;
+        height: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: visible !important;
+    }
+
+    #menu-prods {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        height: 90px !important;
+    }
+} /* <--- ESTE es el único cierre que necesita el @media al final */
+
+    .seccion {
+        height: auto !important;
+        margin: 15px 5px !important;
+    }
+
+    #lista-bolsa {
+        height: auto !important;
+        display: block !important;
+    }
+
+
+
+        /* ==========================================================================
+           🔥 SECCIÓN DEFINITIVA: BOTONES DE PAGO (Efectivo, Tarjeta, etc.)
+           ========================================================================== */
+        
+        /* ==========================================================================
+   🔥 FIJACIÓN Y SIMETRÍA DE LA FILA DE AJUSTE Y BOTONES DE PAGO
+   ========================================================================== */
+
+/* 1. Contenedor Maestro: Forzamos a que mida lo mismo que la bolsa y se centre */
+.fila-ajuste-caja,
+div:has(> #payment-options-container) {
+    width: 100% !important;
+    max-width: 1100px !important; /* Alineación milimétrica con la bolsa */
+    margin: 0 auto 15px auto !important; /* Centrado perfecto */
+    background-color: #f1f2f6 !important; /* Tu gris de fondo para la sección */
+    border-radius: 12px !important;
+    padding: 12px !important;
+    box-sizing: border-box !important;
+}
+
+/* 2. El contenedor de los botones con scroll oculto */
+#payment-options-container.button-group {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important; /* Scroll horizontal si es necesario */
+    align-items: center !important;
+    
+    height: 65px !important; 
+    min-height: 65px !important;
+    width: 100% !important;
+    
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 12px !important;
+    padding: 5px 10px !important;
+    background: #ffffff !important; /* Tarjeta interna blanca para resaltar */
+    border: 1px solid #dfe4ea !important;
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+    
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+
+/* Ocultar barra de scroll en Webkit */
+#payment-options-container.button-group::-webkit-scrollbar {
+    display: none !important;
+}
+
+/* 3. Estilo directo y robusto para los botones internos */
+#payment-options-container .btn-payment {
+    flex: 1 0 auto !important; /* Se distribuyen equitativamente sin achicarse */
+    min-width: 130px !important; /* Un poco más de aire para el texto */
+    height: 46px !important; /* Altura perfecta para el tacto en caliente */
+    padding: 0 15px !important;
+    
+    background-color: #ffffff !important;
+    color: #2d3436 !important;
+    border: 1px solid #dbdfea !important;
+    border-radius: 10px !important;
+    
+    font-family: system-ui, -apple-system, sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.04) !important;
+    transition: all 0.2s ease-in-out !important;
+    appearance: none !important;
+    outline: none !important;
+}
+
+/* Interactividad (Hover) */
+#payment-options-container .btn-payment:hover {
+    background-color: #f8f9fa !important;
+    border-color: #b2bec3 !important;
+    transform: translateY(-1px) !important;
+}
+
+/* 🔵 Estado Seleccionado (Azul vibrante impecable) */
+#payment-options-container .btn-payment.active {
+    background-color: #007bff !important;
+    color: #ffffff !important;
+    border-color: #007bff !important;
+    box-shadow: 0px 4px 10px rgba(0, 123, 255, 0.3) !important;
+}
+
+/* Feedback al presionar en pantalla táctil */
+#payment-options-container .btn-payment:active {
+    transform: translateY(1px) !important;
+}
+    </style>
+</head>
+<body>
+<div id="notificacion-exito" style="display: none;">✅ Venta Guardada!</div>
+<div id="pos-side">
+    <div class="fila-control-superior">
+        <div style="flex: 1.0; position: relative; display: flex; align-items: center; gap: 8px;">
+            <input type="text" id="input-cliente" list="sugerencias-clientes" autocomplete="off" placeholder="Nombre del Cliente..." 
+                   style="width: 100%; padding: 10px; border-radius: 5px; border: none; font-size: 16px; color: #333;">
+                   <datalist id="sugerencias-clientes">
+                    </datalist>
+                
+            <button type="button" id="btn-voz" class="btn" 
+                    style="background: #e0e0e0; border: none; border-radius: 5px; padding: 8px 12px; cursor: pointer; transition: 0.3s;" 
+                    onclick="toggleVoz()">
+                <span id="icono-mic">🎙️</span>
+            </button>
+            <p id="salida"></p>
+
+            <button class="btn" 
+                    style="background: var(--red); border: none; border-radius: 5px; padding: 8px 12px; color: white; opacity: 0.8;" 
+                    onclick="nuevoPedido()" title="Reiniciar Pedido">
+                ❌
+            </button>
+            <button onclick="limpiarSistemaPOS()">
+  🧹 Reset pruebas
+</button>
+        </div>
+
+        <div id="origen-container" class="origen-container" style="flex: 2; margin-bottom: 0;">
+            <label class="btn-origen">
+                <input type="radio" name="origen-pedido" value="PRESENCIAL" checked>
+                <span>🏠 Presencial</span>
+            </label>
+            <label class="btn-origen">
+                <input type="radio" name="origen-pedido" value="WHATSAPP">
+                <span>💬 WhatsApp</span>
+            </label>
+            <label class="btn-origen">
+                <input type="radio" name="origen-pedido" value="TELEFONO">
+                <span>📞 Teléfono</span>
+            </label>
+            <label class="btn-origen">
+                <input type="radio" name="origen-pedido" value="DELIVERY">
+                <span>🛵 Delivery</span>
+            </label>
+        </div>
+    </div>
+        
+    <div id="menu-cats"></div>
+    <div id="menu-prods"></div>
+
+    <div class="seccion">
+        <strong>🛒 Bolsa de Entrega:</strong>
+        <div id="lista-bolsa"></div>
+        <h3 id="total-bolsa">Total: $0</h3>
+    </div>
+
+    <div class="controles-envio" style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+        <div style="display: flex; align-items: center; background: #f1f2f6; padding: 12px; border-radius: 8px; flex: 1.2; border: 2px solid #dfe4ea;">
+            <label style="font-weight: 900; font-size: 1.2rem; color: #2d3436; margin-right: 5px; white-space: nowrap;">+/- $</label>
+            <input type="number" id="ajuste-global" value="0" oninput="renderBolsa()" 
+                   style="width: 100%; border: none; background: transparent; font-size: 1.5rem; font-weight: 900; outline: none; text-align: right; color: #d63031;">
+        </div>
+
+        <button class="btn" id="btn-enviar" 
+                style="flex: 1.5; background: var(--orange); padding: 18px; font-weight: 900; font-size: 1.2rem; border-radius: 8px; display: none; box-shadow: 0 4px 0 #d35400;" 
+                onclick="enviarCocina()">
+            🚀 ENVIAR A COCINA
+        </button>
+    </div>
+        
+    <div id="payment-options-container" class="button-group"></div>
+      
+    <div class="seccion-maestra-pedidos">
+        <p style="margin: 5px; font-size: 0.8em; color: #ecf0f1;">🚀 PEDIDOS EN PROCESO (Toca para editar/cobrar/entregar):</p>
+        <div id="contenedor-pedidos-activos" class="contenedor-espera-superior"></div>
+    </div>
+
+    <div class="seccion-cobro">
+        <p>🔥 Por Entregar / Cobrar:</p>
+        <div id="contenedor-pedidos-cobro" class="contenedor-espera"></div>
+    </div>
+
+    <div class="seccion" style="background: #ebf5fb;">
+        <strong>💰 Caja del Día:</strong>
+        <div id="resumen-caja" style="font-size: 0.85rem;"></div>
+    </div>
+</div>
+
+    
+
+    <!-- MODAL -->
+    <div id="modal">
+        <div class="modal-content" id="modal-body"></div>
+    </div>
+
+    <audio id="snd" src="https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3" preload="auto"></audio>
+    
+
+   
+
+<script>
+// Lista negra temporal para evitar que el lag de Google Sheets resucite pedidos borrados
+let pedidosRecienDespachados = [];
+const ORDEN_ESTADOS = {
+  "PENDIENTE": 0,
+  "EN PROCESO": 1,
+  "FINALIZADO": 2
+};
+
+
+/// ===========================================
+// 🚀 VARIABLES GLOBALES BLINDADAS (SÍNCRONAS)
+// ===========================================
+// 🛡️ COLA OFFLINE: Almacena las solicitudes de eliminación que fallaron por culpa de la red
+let colaReintentosOffline = (() => {
+  try {
+    const guardado = localStorage.getItem("colaReintentosOffline");
+    return guardado ? JSON.parse(guardado) : [];
+  } catch (error) {
+    console.error("❌ Error leyendo la cola offline:", error);
+    return [];
+  }
+})();
+
+let intervaloPOS = null;
+
+// 🛡️ HIDRATACIÓN SEGURA: Lee el disco duro de inmediato al arrancar el script
+let pedidosEnEspera = (() => {
+  try {
+    const guardado = localStorage.getItem("pedidosEnEspera");
+    return guardado ? JSON.parse(guardado) : [];
+  } catch (error) {
+    console.error("❌ Error crítico leyendo pedidosEnEspera de localStorage:", error);
+    return []; // Escudo protector: el POS no se cae
+  }
+})();
+
+// Las demás variables globales que no se guardan en disco van justo abajo:
+let idsPedidosVendidosInicio = [];
+let idsPedidosVendidosDinamico = [];
+
+document.getElementById('ajuste-global')?.addEventListener('input', renderBolsa);
+// Scope limpio y moderno (usa variables declaradas con let/const)
+let timeoutPOS = null;
+let bloqueoSincronizacion = false;
+
+
+// Inicializamos la API dentro de una función para evitar errores de carga
+try {
+  recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = 'es-ES';
+  recognition.continuous = false;
+  // console.log("Este navegador si soporta Speech API");
+} catch (e) {
+  console.error("Este navegador no soporta Speech API");
+}
+
+let tipoPago = ""; 
+const opcionesPago = ["Efectivo", "Tarjeta", "Transferencia", "Yape/Plin", "Gratis"];
+
+let ultimoHash = 0;
+let cargando=false;
+let sincronizacionEnCurso = false;
+// Carga inicial
+// Bandera global para pausar la importación automática mientras el usuario interactúa
+
+let timeoutBloqueo = null;
+const capitalizar = (txt) => {
+ txt  = txt ?? "";
+    return txt
+        .split(" ")
+        .map(p =>
+            p.charAt(0).toUpperCase() +
+            p.slice(1)
+        )
+        .join(" ");
+    };
+
+const ESTADOS = {
+  PENDIENTE: 'PENDIENTE', // Reemplaza NUEVO por PENDIENTE
+  PREPARANDO: 'PREPARANDO',
+  LISTO: 'LISTO',
+  ENTREGADO: 'ENTREGADO',
+  FINALIZADO: 'FINALIZADO' // Añadido para consistencia macro
+};
+
+
+function toggleClient() {
+    document.getElementById('client-view').classList.toggle('active');
+}
+
+function showPOS() {
+    document.body.classList.remove('show-kds');
+}
+
+
+
+
+  // 1. Recibimos la matriz inyectada desde el servidor
+
+const URL_MENU = 
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vSAifMs_lFEZSqP-RkeHjLZ_dvp7SGfL55PdM18bviZ0QbYLozodJrAWi5IuoOSpeqMrgvR5oQkKU1d/pub?gid=1923494098&single=true&output=tsv"
+let productos = [];
+let catalogoPreparado = [];
+let indiceProductos = {};
+const TOKENS_CONTEXTO = [
+    "con",
+    "sin",
+    "y",
+    "ajo",
+    "aji",
+    "ketchup",
+    "mostaza",
+    "mayo",
+    "mayonesa",
+    "arroz",
+    "papa",
+    "ens",
+    "ensalada"
+];
+
+
+
+function procesarMenu(datos) {
+
+  productos = [];
+
+  for (let i = 1; i < datos.length; i++) {
+
+    const fila = datos[i];
+
+    productos.push({
+
+      id: fila[0],
+
+      categoria: fila[1],
+
+      nombre: fila[2],
+
+      combos: fila[3]
+        ? fila[3].split(",").map(x => x.trim())
+        : [],
+
+      salsas: fila[4]
+        ? fila[4].split(",").map(x => x.trim())
+        : [],
+
+      precio: parseInt(fila[5]) || 0
+    });
+  }
+
+  catalogoPreparado = prepararCatalogo(productos);
+
+  indiceProductos = crearIndice(catalogoPreparado);
+
+  console.log("✅ MENÚ CARGADO");
+  console.log(productos);
+  renderTickets();
+}
+
+//window.onload = cargarMenu;
+
+// Por esto (forma recomendada):
+document.addEventListener("DOMContentLoaded", cargarMenu);
+localStorage.clear();
+// const datosDesdeServidor = <?!= menuData ?>;
+let datosDesdeServidor = [];
+// const productos = [];
+
+
+// 2. Función única para procesar y arrancar la App
+// --- INICIALIZACIÓN ---
+async function iniciarApp() {
+    // 1. Verificamos datos
+    if (!datosDesdeServidor || datosDesdeServidor.length <= 1) {
+        const txtCli = document.getElementById('txt-cli');
+        if (txtCli) { 
+            txtCli.innerText = "⚠️ MENÚ VACÍO O ERROR";
+        }
+        return;
+    }
+
+    // 🔥 LA PURGA REAL TRAS EL F5: Limpiamos la memoria AQUÍ, justo antes de pintar la app
+    //  LIMPIEZA INTELIGENTE (Mantiene los escudos vivos para evitar parpadeos tras el F5)
+     //   console.log("🧹 Validando consistencia de control local por reinicio de terminal...");
+    //     const estadosExistentes = localStorage.getItem('control_estados_terminales');
+     //   if (!estadosExistentes) {
+            // Solo si está totalmente vacío el disco, inicializamos un array limpio
+      //      localStorage.setItem('control_estados_terminales', JSON.stringify([]));
+       // }
+        // Si no hay nada en disco, pedidosEnEspera será un array vacío por defecto
+    // Array temporal para recolectar los nombres de clientes sin procesar
+    const listaNombresTemporales = [];
+
+    const guardado = localStorage.getItem("pedidosEnEspera");
+    pedidosEnEspera = guardado ? JSON.parse(guardado) : [];
+
+    // Procesamos la matriz
+    for (let i = 1; i < datosDesdeServidor.length; i++) {
+        const fila = datosDesdeServidor[i];
+
+        // Capturamos el nombre del cliente (Columna 7 -> índice 6)
+        const nombreCliente = fila[6] ? fila[6].toString().trim() : "";
+        if (nombreCliente) {
+            listaNombresTemporales.push(nombreCliente);
+        }
+
+        productos.push({
+            id: fila[0],
+            cat: fila[1],
+            categoria: fila[1],
+            nombre: fila[2],
+            combos: fila[3] ? fila[3].split(",").map(x => x.trim()) : [],
+            salsas: fila[4] ? fila[4].split(",").map(x => x.trim()) : [],
+            precio: parseInt(fila[5]) || 0,
+            cliente: nombreCliente // Guardamos también el cliente en el objeto del producto por si lo necesitas
+        });
+    }
+    // 👇 NUEVO: Rellenamos el datalist con los clientes únicos de la hoja
+    const datalistClientes = document.getElementById('sugerencias-clientes');
+    if (datalistClientes) {
+        // Filtramos duplicados usando Set y ordenamos alfabéticamente
+        const clientesUnicos = [...new Set(listaNombresTemporales)].sort();
+        
+        // Limpiamos contenido previo e insertamos las nuevas opciones
+        datalistClientes.innerHTML = "";
+        clientesUnicos.forEach(cliente => {
+            const option = document.createElement('option');
+            option.value = cliente;
+            datalistClientes.appendChild(option);
+        });
+    }
+
+    // 🔥 AQUÍ VA TU MOTOR
+    catalogoPreparado = prepararCatalogo(productos);
+    indiceProductos = crearIndice(catalogoPreparado);
+    renderCats();
+
+    // ✨ FUSIÓN: Renderizamos las tarjetas aquí, de forma segura y ordenada
+    if (typeof renderTarjetas === 'function') {
+        renderTarjetas(); 
+        renderTickets();
+    }
+
+    // =========================================================================
+    // 🔥 EL MOTOR DE ENGRANAJE DE PEDIDOS (Sincronización de fondo)
+    // =========================================================================
+    console.log("🔄 Arrancando motores de sincronización asíncrona...");
+    // Limpieza de deuda técnica (Ejecuta esto una vez y luego bórralo)
+    localStorage.removeItem('control_estados_terminales');
+    // 1. Carga inicial de datos de referencia (Ventas)
+    await cargarHistorialVentasInicial();
+    sincronizadorPedidos();
+
+    // El "Latido" automático que gestiona el refresco
+    setInterval(async () => {
+        console.log("🕒 Verificando refresco de ventas...");
+        await cargarHistorialVentasInicial(); 
+    }, 15 * 60 * 1000); // 15 minutos exactos
+} // ◄ Cierre perfecto de iniciarApp
+
+let toast;
+//function test1() {
+let reconocimientoActivo = null; // Almacena la instancia viva del micrófono
+const sinAcentos = (str) => {
+    return str.normalize("NFD").replace(/\p{Diacritic}/gu,"");
+}
+function toggleVoz() {
+    const btn = document.getElementById('btn-voz');
+    const icono = document.getElementById('icono-mic');
+    
+    // Si ya está escuchando, lo detenemos manualmente
+    if (reconocimientoActivo) {
+        reconocimientoActivo.stop();
+        return;
+    }
+
+    // Inicialización nativa de la Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Tu navegador no soporta reconocimiento de voz.");
+        return;
+    }
+
+    // Limpieza de avisos previos si existieran
+    if (typeof toast !== 'undefined' && toast) toast.remove();
+
+    // Creamos la instancia
+    reconocimientoActivo = new SpeechRecognition();
+    reconocimientoActivo.lang = 'es-CL';
+    reconocimientoActivo.interimResults = true;
+
+    // --- EVENTOS DE INTERFAZ DINÁMICA ---
+    reconocimientoActivo.onstart = () => {
+        if (typeof showWarning === 'function') showWarning("🎤 Escuchando dictado...");
+        // Feedback visual: Fondo verde sutil para alertar al cajero que el micrófono está abierto
+        if (btn) btn.style.background = "#d4edda"; 
+        if (icono) icono.innerText = "🛑";
+    };
+
+    reconocimientoActivo.onend = () => {
+        if (typeof showWarning === 'function') showWarning("🛑 Micrófono apagado");
+        // Restauramos el botón a su estado neutro original
+        if (btn) btn.style.background = "#f0f0f0";
+        if (icono) icono.innerText = "🎙️";
+        reconocimientoActivo = null; // Liberamos la variable de control
+    };
+
+    reconocimientoActivo.onerror = e => {
+        if (typeof showWarning === 'function') showWarning("❌ Error de Voz: " + e.error);
+        if (btn) btn.style.background = "#f8d7da"; // Rojo sutil por error
+        reconocimientoActivo = null;
+    };
+
+    // --- PROCESAMIENTO DE RESULTADOS ---
+    reconocimientoActivo.onresult = e => {
+        const resultado = e.results[e.results.length - 1];
+        
+        // Si el usuario no ha terminado de hablar, no hacemos nada todavía
+        if (!resultado.isFinal) return;
+
+        //const transc = resultado[0].transcript;
+        // 🎯 CORRECCIÓN: Extracción segura y directa del texto capturado sin usar subíndices fijos que confundan al motor
+    const transc = resultado.transcript || (resultado[0] && resultado[0].transcript) || "";
+    
+    if (!transc) return; // Si por alguna razón vino vacío, salimos limpiamente
+        
+        // 1. Diccionario de equivalencias (ruido de voz => lo que espera tu parser)
+        const correccionesVoz = {
+            "nada": "nada luego",
+            "haz": "as",
+            "has": "as",
+            "ass": "as",
+            "ash": "as",
+            "ace": "as",
+            "unas": "1 as", // Corrección crítica para cuando dicen "un as..." rápido
+            "un haz": "1 as",
+            //"pápa": "papa",
+        // 🎯 PARCHE FONÉTICO: Corrige lo que el navegador entiende mal al dictar letras sueltas
+        "who": "ju",      // Corrige "who 3 chorrillana" por "ju 3 chorrillana"
+        "iu": "ju",       // Otra variante fonética común de los navegadores
+        "hi": "ja",       // Para búsquedas con JA (Javier, Jaime)
+        "go": "ju"       // A veces Chrome confunde el sonido gutural
+        };
+
+        // 2. Aplicación en tu captura de texto
+        let texto = sinAcentos(transc.toLowerCase().trim());
+// 🎯 REGLA DE ORO: Separar letras pegadas a números (Ej: "p3 pescados" -> "p 3 pescados")
+    // Esta expresión busca cualquier letra seguida inmediatamente de un número y les inyecta un espacio al medio
+    texto = texto.replace(/([a-z])(\d)/g, '$1 $2'); 
+        // --- CORRECCIÓN CRÍTICA ---
+// Ordenamos las llaves de mayor a menor longitud. 
+// Esto garantiza que "un haz" se evalúe ANTES que "haz".
+const llavesOrdenadas = Object.keys(correccionesVoz).sort((a, b) => b.length - a.length);
+
+// Creamos la expresión regular dinámica usando las llaves ordenadas
+const buscarPalabras = new RegExp(`\\b(${llavesOrdenadas.join('|')})\\b`, 'g');
+
+// Tu reemplazo mágico idéntico, ahora 100% robusto
+texto = texto.replace(buscarPalabras, (match) => correccionesVoz[match]);
+        
+        if (typeof showWarning === 'function') showWarning("📝 FINAL: " + texto);
+        
+        // Imprimimos en la etiqueta de salida si existe en el layout
+        const pSalida = document.getElementById('salida');
+        if (pSalida) pSalida.innerHTML = `<strong>Capturado:</strong> ${texto}`;
+
+        // 🚀 PROCESAMIENTO NATIVO CON TU ÍNDICE DE PRODUCTOS
+        // Aquí corremos tu parser pasándole la tabla de mapeo completa
+        if (typeof procesarPedidoCompleto === 'function') {
+            const datos = procesarPedidoCompleto(texto, indiceProductos);
+            
+           // 🎯 INTEGRACIÓN DE TU RUTINA DE EMPUJÓN (DATALIST)
+        // Extraemos el cliente que devolvió tu parser (por ejemplo: datos.cliente)
+        if (datos && datos[0].cliente) {
+            procesarVozCliente(datos[0].cliente);
+        }
+
+            // Inyectamos el resultado directo al pedidoActivo y actualizamos la barra lateral
+            if (typeof cargarParserVozABolsaPrincipal === 'function') {
+                cargarParserVozABolsaPrincipal(datos);
+            }
+        }
+        
+    };
+//console.log("pedido Activo salida toggle",pedidoActivo.cliente);
+    // Encendemos el motor de grabación
+    reconocimientoActivo.start();
+    
+}
+function esNumero(valor) {
+  return /^\d+$/.test(valor);
+}
+
+function procesarTexto(texto) {
+  texto = texto.toLowerCase();
+
+  const sinFin = texto.split("fin")[0];
+  const palabras = sinFin.trim().split(/\s+/);
+
+  let nombre = "";
+  let token = "";
+  let nota = "";
+
+  const idx = palabras.findIndex(p => p.startsWith("nom"));
+
+  if (idx !== -1) {
+    nombre = palabras[idx + 1] || "";
+
+    const posibleToken = palabras[idx + 2] || "";
+
+    if (esNumero(posibleToken)) {
+      token = posibleToken;
+      nota = palabras.slice(idx + 3).join(" ");
+    } else {
+      nota = palabras.slice(idx + 2).join(" ");
+    }
+  }
+
+  return { nombre, token, nota };
+}
+function normalizar(texto) {
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function prepararCatalogo(productos) {
+
+    return productos.map(p => {
+
+        const nombreLimpio = p.nombre
+            .replace(/\(\d+\s*presas?\)/gi, "")
+            .replace(/\b1\/2\b/g, "medio")
+            .replace(/\b1 litro\b/g, "litro")
+            .replace(/\bpescados\b/g, "pescado")
+            .replace(/\bfritos\b/g, "frito");
+
+        const nombreNormBase =
+            normalizar(nombreLimpio);
+
+        const catNorm =
+            normalizar(p.cat || "");
+
+        // If product name does not already
+        // start with category,
+        // prepend category semantically
+
+        const nombreCompleto =
+            nombreNormBase.startsWith(catNorm)
+                ? nombreNormBase
+                : `${catNorm} ${nombreNormBase}`;
+
+        return {
+            ...p,
+
+            nombreNormalizado:
+                nombreCompleto,
+
+            tokens:
+                nombreCompleto.split(/\s+/)
+        };
+    });
+}
+function crearIndice(catalogo) {
+  const indice = {};
+
+  catalogo.forEach(prod => {
+    prod.tokens.forEach(t => {
+      // 1. Limpiamos el token: si termina en 's', se la quitamos
+      // El RegEx /s$/i significa: busca una 's' al final ($) sin importar mayúsculas (i)
+      const tokenLimpio = t.length > 3 
+            ? t.replace(/es$/i, '').replace(/s$/i, '') 
+            
+            : t;
+
+      // 2. Usamos el token limpio para crear el índice
+      if (!indice[tokenLimpio]) indice[tokenLimpio] = [];
+      indice[tokenLimpio].push(prod);
+    });
+  });
+
+  return indice; // ¡No olvides el return!
+}
+async function cargarMenu() {
+
+  try {
+
+    const resp = await fetch(URL_MENU);
+
+    const texto = await resp.text();
+
+    datosDesdeServidor = texto
+      .trim()
+      .split(/\r?\n/)
+      .map(f => f.split("\t"));
+
+    console.log("✅ SHEET CARGADA");
+
+    //console.table(datosDesdeServidor);
+
+    await iniciarApp();
+
+  } catch(err) {
+
+    console.error(err);
+
+  }
+}
+const tokensDebiles = [
+    "pollo",
+    "bebida",
+    "alitas",
+    "pescado"
+];
+function cargarParserVozABolsaPrincipal(jsonParser) {
+    
+    try {
+        if (!jsonParser || jsonParser.length === 0) return;
+
+        // 1. Extraemos el Cliente y la Nota General del pedido (ej: "delivery", "a la 1 retiro")
+        // Buscamos en el primer elemento del parser, que siempre trae esta metadata
+        const metadataInicial = jsonParser[0];
+        
+        if (metadataInicial.cliente) {
+            pedidoActivo.cliente = metadataInicial.cliente;
+            const inputNombre = document.getElementById('input-cliente');
+            if (inputNombre) inputNombre.value = metadataInicial.cliente;
+            
+            
+        }
+
+        // 📌 CAPTURA DE NOTA GENERAL (KDS / Delivery)
+        // Guardamos el comentario del flujo ("a la 1 retiro", etc.) en el pedido global
+        const notaGeneral = metadataInicial.notaGlobal || metadataInicial.nota || "";
+        if (notaGeneral) {
+            pedidoActivo.notaGeneral = notaGeneral; // O la propiedad exacta que use tu KDS para la nota del ticket
+
+        }
+
+        // 2. Mapeamos cada elemento capturado por la voz
+        jsonParser.forEach(itemParser => {;
+            // 🔥 FILTRO CLAVE: Si el elemento no tiene la propiedad 'producto' 
+            // (como la fila de metadatos inicial), lo saltamos pacíficamente.
+            if (!itemParser || !itemParser.producto) {
+                return; 
+            }
+
+            let productoMenu = null;
+            const nombreBuscar = itemParser.producto.toLowerCase().trim();
+
+            // Buscamos el producto correspondiente en tu indiceProductos usando el nombre
+            if (typeof indiceProductos !== 'undefined' && indiceProductos) {
+                if (Array.isArray(indiceProductos)) {
+                    productoMenu = indiceProductos.find(p => p && p.nombre && p.nombre.toLowerCase().trim() === nombreBuscar);
+                } else {
+                    productoMenu = Object.values(indiceProductos).find(p => p && p.nombre && p.nombre.toLowerCase().trim() === nombreBuscar);
+                }
+            }
+
+            // Extraemos valores reales o usamos los de contingencia si no se encuentra en el índice
+            const precioBase = itemParser.precio ? parseInt(itemParser.precio, 10) : 0;
+            const categoria = productoMenu ? productoMenu.cat || productoMenu.categoria : "Otros";
+            const idProducto = productoMenu ? productoMenu.id : "";
+
+            // Formateamos las especificaciones según tus campos actuales
+            const esBebida = categoria.toUpperCase() === "BEBIDA";
+            //const acompaStr = itemParser.acompanamiento ? itemParser.acompanamiento.toUpperCase() : "N/A";
+            const acompaStr = itemParser.acompanamiento ? itemParser.acompanamiento : "N/A";
+            const notaStr = itemParser.notaEspecifica ? itemParser.notaEspecifica : "";
+
+            // Procesamos el array de salsas del parser
+            const salsasProcesadas = itemParser.salsas 
+            ? itemParser.salsas.map(s => capitalizar(s.trim())) 
+            : [];
+            // 3. Estructuramos el clon exacto de itemTemporal que requiere sumarABolsa
+            const nuevoItem = {
+                idUnico: "item-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5),
+                id: idProducto,
+                nombre: productoMenu ? productoMenu.nombre : itemParser.producto,
+                categoria: categoria,
+                precio: precioBase,
+                ajuste: 0,
+                nota: esBebida ? "" : notaStr,
+                acompanamiento: esBebida ? "N/A" : acompaStr,
+                //salsas: itemParser.salsas ? [...itemParser.salsas] : [],
+                salsas: salsasProcesadas,
+                estado: esBebida ? "ENTREGADO" : "PENDIENTE",
+                precioTotalItem: precioBase 
+            };
+
+            // Si es una bebida, respetamos la regla de negocio de tu "sumarABolsa"
+            if (esBebida) {
+                nuevoItem.nota = "";
+                nuevoItem.ajuste = 0;
+                nuevoItem.estado = "ENTREGADO";
+                nuevoItem.precioTotalItem = nuevoItem.precio;
+            }
+
+            // Empujamos el ítem directo al arreglo vivo del pedido activo
+            pedidoActivo.items.push(nuevoItem);
+        });
+
+        // 4. Invocamos tu función original para refrescar la interfaz y calcular totales globales
+        renderBolsa();
+        console.log("🎤 Pedido cargado con éxito. Estado de pedidoActivo:", pedidoActivo);
+
+    } catch (error) {
+        console.error("🚨 Error capturado en la carga por voz:", error);
+    }
+}
+function eliminarFilaEspecificaDeBolsa(nombreProducto, varianteTexto) {
+    
+    if (pedidoActivo.estado != "PENDIENTE") return;
+    const partes = varianteTexto.split('|').map(x => x.trim());
+    const acompTarget = partes[0] || "";
+    const salsasTarget = partes[1].trim() || "";
+    const notaTarget = partes[2] || "";
+console.log("acompTarget ",acompTarget);
+console.log("salsasTarget",salsasTarget);
+console.log("notaTarget",notaTarget);
+    // Buscamos el índice del primer elemento que calza con la descripción 
+    const indice = pedidoActivo.items.findIndex(it => {
+        //console.log("salsas target",salsasTarget);
+        
+        const coincidenSalsas = (it.salsas ? it.salsas.join(', ') : "") === salsasTarget;
+        const coincidenAcomp = (it.acompanamiento || "N/A") === (acompTarget || "N/A");
+        const coincidenNota = (it.nota || "") === notaTarget;
+        console.log("it.salsas ",it.salsas);
+console.log("it.acompanamiento",it.acompanamiento);
+console.log("it.nota",it.nota);
+        return it.nombre === nombreProducto && coincidenSalsas && coincidenAcomp && coincidenNota;
+    });
+
+    // Si lo encuentra, remueve esa unidad y actualiza el DOM
+    console.log("variante",varianteTexto);
+    console.log("indice ",indice);
+    
+    if (indice !== -1) {
+const ultimoIdGrupo = pedidoActivo.idGrupo;
+        pedidoActivo.items.splice(indice, 1);
+        console.log("pedidoActivo",pedidoActivo);
+        console.log(`🗑️ Unidad removida de la bolsa: ${nombreProducto} (${varianteTexto})`);
+        console.log("pedidoActivo.items ",pedidoActivo.items.length);
+        renderBolsa(); // Tu renderizador recalculará los totales globales automáticamente
+        if (!pedidoActivo.items || pedidoActivo.items.length === 0){  // no quedan productos
+            // ✅ DESESTIMIENTO DE COMPRA
+                    console.log("vamos aqui");
+
+            recuperarPedido(pedidoActivo.idGrupo);
+            //return;
+            
+        }
+    }
+    //renderTarjetas();
+    renderTickets();
+}
+function esInicioProducto(token, indice) {
+
+    if (!token) return false;
+    if (!esNumero(token)) return false;
+
+    if (TOKENS_CONTEXTO.includes(token)) {
+        return false;
+    }
+
+    if (tokensDebiles.includes(token)) {
+        return false;
+    }
+
+    const candidatos = indice[token];
+
+    if (!candidatos) return false;
+
+    return candidatos.some(p =>
+        p.tokens[0] === token
+    );
+    
+
+    
+}
+//function detectarBloques(tokens, indice) {
+
+// Agrega esto en tu mapa de correcciones fonéticas rápidas antes de limpiar el texto
+const correccionesVozChile = {
+    "haz": "as",
+    "has": "as",
+    "ace": "as",
+    "un haz": "1 as",
+    "un as": "1 as"
+};
+function procesarPedidoCompleto(stringEntrada, indiceProductos) {
+    if (!stringEntrada || !stringEntrada.trim()) return [];
+    const limpiarTexto = (txt) => {
+        if (!txt) return "";
+        
+        // 1. Limpieza estándar: quitar espacios, minúsculas y remover acentos/tildes
+        let limpio = txt.trim()
+            .toLowerCase()
+            .normalize("NFD").replace(/\p{Diacritic}/gu,"");
+            //.replace(/[\u0300-\u036f]/g, "");
+
+        // 2. Diccionario explícito para los plurales del negocio
+        // Esto mapea de forma segura el dictado de voz con tu base de datos
+        const plurales = {
+            "papas": "papa",
+            //"pápas": "papa",
+            "medianas": "mediana",
+            "grandes": "grande",
+            "personales": "personal",
+            "familiares": "familiar",
+            "bebidas": "bebida",
+            "promos": "promo"
+        };
+
+        if (plurales[limpio]) {
+            return plurales[limpio];
+        }
+
+        // 3. PROTECCIÓN CRÍTICA PARA EL "AS"
+        // Si la palabra es "as", "ash", o "ace", la dejamos intacta para que no la destruya
+        if (limpio === "as" || limpio === "ash" || limpio === "ace") {
+            return "as"; // Forzamos a que siempre devuelva "as" de manera limpia
+        }
+
+        // 4. Fallback seguro para otros plurales
+        // Solo quita la 's' final si la palabra tiene más de 3 letras (evita tocar "as")
+        if (limpio.length > 3 && limpio.endsWith('s')) {
+            return limpio.slice(0, -1);
+        }
+
+        return limpio;
+    };
+    
+
+    const mapaNumeros = {
+        "un": "1", "uno": "1", "una": "1", "dos": "2", "tres": "3", 
+        "cuatro": "4", "cinco": "5", "seis": "6", "siete": "7", "ocho": "8", "nueve": "9", "uno y medio": "1 1/2","medio": "1/2"
+    };
+
+    let tokensIniciales = stringEntrada
+        .split(/\s+/)
+        .filter(t => t.trim() !== "")
+        .map(t => mapaNumeros[t.toLowerCase()] || t);
+
+    if (tokensIniciales.length === 0) return [];
+
+    const nombreCliente = tokensIniciales.shift().toUpperCase();
+    const restoDelString = tokensIniciales.join(" ");
+
+    const todosLosAcompanamientos = new Set();
+    const todasLasSalsas = new Set();
+    const palabrasClaveProductos = new Set();
+
+    Object.keys(indiceProductos).forEach(llave => {
+    palabrasClaveProductos.add(llave);
+    if (llave.endsWith('o') || llave.endsWith('a')) {
+        palabrasClaveProductos.add(llave + 's');
+    }
+});
+
+    const buscarFraseProducto = (tokens, inicio) => {
+    const frase = [];
+    for (let j = inicio; j < tokens.length; j++) {
+        const token = limpiarTexto(tokens[j]);
+
+        // --- MODIFICACIÓN 1: CONDICIÓN DE PARADA INTELIGENTE ---
+        // Si el token es un acompañamiento (ej: 'papa'), pero es el PRIMER token del intento de producto,
+        // NO debemos frenar. Podría ser el producto principal ("Papa Personal").
+        if (todosLosAcompanamientos.has(token) && j !== inicio) 
+            break;
+
+        if (todasLasSalsas.has(token))
+            break;
+
+        if (/^\d+$/.test(token))
+            break;
+
+        if (token === "sigue")
+            break;
+
+        if (token === "nada")
+            break;
+
+        frase.push(token);
+    }
+    
+    // LONGEST PHRASE FIRST
+    for (let size = frase.length; size >= 1; size--) {
+        const tokensIntento = frase.slice(0, size);
+        const primerToken = tokensIntento[0];
+
+        if (!indiceProductos[primerToken])
+            continue;
+
+        const candidatos = indiceProductos[primerToken];
+
+        // --- MODIFICACIÓN 2: CRITERIO DE SELECCIÓN FLEXIBLE PARA VARIANTES ---
+        const candidato = candidatos.find(prod => {
+            // Limpiamos los tokens base del producto
+            const tokensProd = prod.tokens.map(t => limpiarTexto(t));
+            
+            // Caso A: Coincidencia estructural exacta de tokens de tu algoritmo original
+            const coincideExacto = tokensIntento.every((t, idx) => tokensProd[idx] === t);
+            if (coincideExacto) return true;
+
+            // Caso B: Manejo de tamaños/variantes (como "papa personal", "papa mediana")
+            // Si tenemos más de un token en el intento (ej: ['papa', 'personal'])
+            if (tokensIntento.length > 1) {
+                const nombreProdNormalizado = limpiarTexto(prod.nombre);
+                
+                // Verificamos si todos los tokens ingresados están presentes dentro del nombre completo del producto
+                return tokensIntento.every(token => nombreProdNormalizado.includes(token));
+            }
+
+            return false;
+        });
+
+       
+        if (candidato) {
+            return {
+                producto: candidato,
+                tokensConsumidos: size
+            };
+        }
+    }
+
+    
+
+    // fallback
+    return {
+        producto: buscarProductoEnIndice(frase[0]),
+        tokensConsumidos: 1
+    };
+};
+    Object.values(indiceProductos).forEach(arrayProductos => {
+        arrayProductos.forEach(prod => {
+            if (prod.combos) {
+                prod.combos.forEach(combo => {
+                    combo.split("+").forEach(comp => todosLosAcompanamientos.add(limpiarTexto(comp)));
+                });
+            }
+            if (prod.salsas) {
+                prod.salsas.forEach(salsa => todasLasSalsas.add(limpiarTexto(salsa)));
+            }
+        });
+    });
+    // 🔥 AGREGAMOS "NADA" COMO UNA SALSA VÁLIDA RECONOCIDA POR EL SISTEMA
+    todasLasSalsas.add("nada");
+    
+    
+    const buscarProductoEnIndice = (token) => {
+        const norm = limpiarTexto(token);
+        if (indiceProductos[norm]) return indiceProductos[norm][0];
+        if (norm.endsWith('s')) {
+            const singular = norm.slice(0, -1);
+            if (indiceProductos[singular]) return indiceProductos[singular][0];
+        }
+        return null;
+    };
+
+    // EXTRAER NOTA GLOBAL
+    let indiceCorteNotaGlobal = restoDelString.length;
+    const tokensParaNota = restoDelString.split(" ");
+    for (let i = 0; i < tokensParaNota.length; i++) {
+        if (/^\d+$/.test(tokensParaNota[i]) && tokensParaNota[i + 1]) {
+            const resultadoBusqueda =
+    buscarFraseProducto(
+        tokensParaNota,
+        i + 1
+    );
+    if (resultadoBusqueda.producto){
+            //if (buscarProductoEnIndice(siguiente) || todosLosAcompanamientos.has(siguiente) || todasLasSalsas.has(siguiente)) {
+                const fraseDetectada =
+                tokensParaNota
+                    .slice(
+                        i,
+                        i + 1 +
+                        resultadoBusqueda.tokensConsumidos
+                    )
+                    .join(" ");
+
+            indiceCorteNotaGlobal =
+                restoDelString.indexOf(
+                    fraseDetectada
+                );
+                break;
+            }
+        }
+    }
+
+    const notaGlobal = restoDelString.substring(0, indiceCorteNotaGlobal).trim();
+    const stringPedidosPuros = restoDelString.substring(indiceCorteNotaGlobal).trim(); //aquí
+
+    // 1. REBANADO MULTI-PRODUCTO (JERARQUÍA MÁXIMA)
+    const arrayProductosRegex = Array.from(palabrasClaveProductos).join("|");
+    //const regexSegmentar = new RegExp(`(?=\\b\\d+\\s+(${arrayProductosRegex})\\b)`, "gi");
+    // Agregamos ?: justo antes de la variable para que los paréntesis sean de NO captura
+    const regexSegmentar = new RegExp(`(?=\\b\\d+\\s+(?:${arrayProductosRegex})\\b)`, "gi");
+    const subPedidos = stringPedidosPuros.split(regexSegmentar).filter(s => s && s.trim() !== "");
+    
+        
+    const subPedidosLimpios = [];
+    for (let i = 0; i < subPedidos.length; i++) {
+        const bloque = subPedidos[i].trim();
+        if (/^\d+$/.test(bloque.split(" ")[0])) {
+            subPedidosLimpios.push(bloque);
+        } else if (subPedidosLimpios.length > 0) {
+            subPedidosLimpios[subPedidosLimpios.length - 1] += " " + bloque;
+        }
+    }
+
+    const itemsParaBackend = [];
+
+    // ==========================================
+    // 2. PROCESAMIENTO ATÓMICO DE CADA PRODUCTO
+    // ==========================================
+    subPedidosLimpios.forEach(subPedidoStr => {
+        // Separación estricta de ámbitos de SALSAS por la palabra "luego"
+        const segmentosSalsas = subPedidoStr.split(/\bluego\b/gi).map(s => s.trim());
+
+        let cantidadTotalPedidos = 1;
+        let productoBase = null;
+
+        // Identificamos el producto dominante y su cantidad total al inicio
+        const tokensPrimerTramo =
+        segmentosSalsas[0]
+            .split(" ")
+            .filter(t => t.trim() !== "");
+
+        if (
+            /^\d+$/.test(tokensPrimerTramo[0])
+        ) {
+
+            cantidadTotalPedidos =
+        parseInt(tokensPrimerTramo[0], 10);
+
+    // ==========================================
+    // PRODUCT PHRASE DETECTION
+    // ==========================================
+
+    const fraseProducto = [];
+
+    for (
+        let z = 1;
+        z < tokensPrimerTramo.length;
+        z++
+    ) {
+
+        const tokenNorm =
+            limpiarTexto(tokensPrimerTramo[z]);
+
+        // STOP CONDITIONS
+
+        // accompaniment
+        if (
+            todosLosAcompanamientos
+                .has(tokenNorm)
+        ) {
+            break;
+        }
+
+        // sauce
+        if (
+            todasLasSalsas
+                .has(tokenNorm)
+        ) {
+            break;
+        }
+
+        // next qty
+        if (
+            /^\d+$/.test(tokenNorm)
+        ) {
+            break;
+        }
+
+        // semantic stop words
+        if (
+            tokenNorm === "sigue" ||
+            tokenNorm === "nada"
+        ) {
+            break;
+        }
+
+        fraseProducto.push(tokenNorm);
+    }
+
+    // ==========================================
+    // FIND PRODUCT
+    // ==========================================
+
+    const resultadoBusqueda =
+    buscarFraseProducto(
+        tokensPrimerTramo,
+        1
+    );
+    
+    productoBase =
+        resultadoBusqueda.producto;
+    }
+
+        if (!productoBase) return;
+
+        // ----------------------------------------------------------------
+        // PASO 1: MAPEO PREVIO DE ACOMPAÑAMIENTOS (Ámbito Cuotas / Persistencia)
+        // ----------------------------------------------------------------
+        const tokensFiltroAcomps = subPedidoStr.split(" ");
+        let mapaSecuencialAcompanamientos = [];
+        let acompanamientoCorriente = productoBase.combos[0] || null;
+
+        for (let x = 0; x < tokensFiltroAcomps.length; x++) {
+            const token = tokensFiltroAcomps[x];
+            if (/^\d+$/.test(token) && tokensFiltroAcomps[x + 1]) {
+                const n = parseInt(token, 10);
+                const siguienteTokenNorm = limpiarTexto(tokensFiltroAcomps[x + 1]);
+                if (todosLosAcompanamientos.has(siguienteTokenNorm)) {
+                    for (let c = 0; c < n; c++) {
+                        mapaSecuencialAcompanamientos.push(capitalizar(siguienteTokenNorm.toLowerCase()));
+                    }
+                    acompanamientoCorriente = siguienteTokenNorm; // Mantiene memoria por si faltan
+                    x++; 
+                }
+            } else {
+                const tokenNorm = limpiarTexto(token);
+                if (todosLosAcompanamientos.has(tokenNorm) && !todosLosAcompanamientos.has(limpiarTexto(tokensFiltroAcomps[x - 1]))) {
+                    acompanamientoCorriente = tokenNorm;
+                    while (mapaSecuencialAcompanamientos.length < cantidadTotalPedidos) {
+                        mapaSecuencialAcompanamientos.push(tokenNorm);
+                    }
+                }
+            }
+        }
+        while (mapaSecuencialAcompanamientos.length < cantidadTotalPedidos) {
+            mapaSecuencialAcompanamientos.push(acompanamientoCorriente);
+        }
+
+        // ----------------------------------------------------------------
+        // PASO 2: EXTRACCIÓN SECUENCIAL DE SALSAS Y NOTAS POR SEGMENTO
+        // ----------------------------------------------------------------
+        // Creamos un mapa de qué salsas y notas le corresponden a cada hito ("luego")
+        let bloquesSalsasCalculados = [];
+
+        segmentosSalsas.forEach((segmento, indiceSegmento) => {
+            const tokensSegmento = segmento.split(" ").filter(t => t.trim() !== "");
+            if (tokensSegmento.length === 0) return;
+
+            let salsasSegmento = [];
+            let notasSegmento = [];
+            let esBloqueNada = (tokensSegmento.length === 1 && limpiarTexto(tokensSegmento[0]) === "nada");
+
+            // Tu lógica exacta de clasificación por tokens (¡Intacta!)
+            for (let m = 0; m < tokensSegmento.length; m++) {
+                const token = tokensSegmento[m];
+                const tokenNorm = limpiarTexto(token);
+
+                if (/^\d+$/.test(token) && tokensSegmento[m + 1]) {
+                    const sigNorm = limpiarTexto(tokensSegmento[m + 1]);
+                    if (todosLosAcompanamientos.has(sigNorm) || buscarProductoEnIndice(sigNorm)) {
+                        m++; continue;
+                    }
+                }
+                if (todosLosAcompanamientos.has(tokenNorm)) continue;
+
+                if (productoBase.salsas.map(s => limpiarTexto(s)).includes(tokenNorm)) {
+                    salsasSegmento.push(tokenNorm);
+                } else if (tokenNorm !== "nada") {
+                    const esOtroProducto = palabrasClaveProductos.has(tokenNorm) || 
+                                           (tokenNorm.endsWith('s') && palabrasClaveProductos.has(tokenNorm.slice(0, -1)));
+                    if (!esOtroProducto) notasSegmento.push(token);
+                }
+            }
+
+            bloquesSalsasCalculados.push({
+                esNada: esBloqueNada,
+                salsas: salsasSegmento,
+                notaEspecifica: notasSegmento.join(" ")
+            });
+        });
+
+        // ----------------------------------------------------------------
+        // PASO 3: CONSTRUCCIÓN CASILLERO POR CASILLERO (EFECTO MEMORIA ASIMÉTRICO)
+        // ----------------------------------------------------------------
+        const listaPlatosProducto = [];
+        let salsasEnMemoria = [];
+        let notaEnMemoria = "";
+
+        // Si el operador dictó salsas al inicio, esa es nuestra primera elección base
+        if (bloquesSalsasCalculados[0]) {
+            salsasEnMemoria = [...bloquesSalsasCalculados[0].salsas];
+            notaEnMemoria = bloquesSalsasCalculados[0].notaEspecifica;
+        }
+
+        for (let idx = 0; idx < cantidadTotalPedidos; idx++) {
+            // CORRECCIÓN: Usamos idx para saber si hay un bloque específico de salsa ("luego") 
+            // mapeado para este plato físico en la línea de tiempo (a partir del segundo plato, idx > 0)
+            if (idx > 0 && bloquesSalsasCalculados[idx]) {
+                const bloqueActual = bloquesSalsasCalculados[idx];
+                if (bloqueActual.esNada) {
+                    salsasEnMemoria = [];
+                    notaEnMemoria = "";
+                } else {
+                    
+                    salsasEnMemoria = [...bloqueActual.salsas];
+                    notaEnMemoria = bloqueActual.notaEspecifica;
+                }
+            }
+            let comboEncontrado = ""; // Por defecto asumimos vacío si llega null
+
+            // 1. Cortocircuito: Solo procesamos si el acompañamiento de voz existe
+            if (mapaSecuencialAcompanamientos[idx] !== null && mapaSecuencialAcompanamientos[idx] !== undefined) {
+                const sideClean = normalizar(mapaSecuencialAcompanamientos[idx]); // "pure"
+
+                const tieneCombos = productoBase.combos && Array.isArray(productoBase.combos) && productoBase.combos.length > 0;
+
+                // Buscamos en el arreglo de combos
+                comboEncontrado = tieneCombos 
+                    ? productoBase.combos.find(combo => {
+                        const comboClean = normalizar(combo); 
+                        return comboClean.startsWith(sideClean);
+                      }) || mapaSecuencialAcompanamientos[idx] 
+                    : mapaSecuencialAcompanamientos[idx];
+            }
+    
+
+           // 2. Armamos el objeto con el combo resuelto (o vacío si fue null)
+            listaPlatosProducto.push({
+                cliente: nombreCliente,
+                notaGlobal: notaGlobal,
+                producto: productoBase.nombre,
+                acompanamiento: comboEncontrado, 
+                salsas: [...salsasEnMemoria], // Hereda la primera elección o la última mutación indicada
+                notaEspecifica: notaEnMemoria,
+                precio: productoBase.precio
+            });
+        } // Cierre de tu bloque/condicional previo
+        
+        // 3. Persistencia en el arreglo global
+        itemsParaBackend.push(...listaPlatosProducto);
+    }); // Cierre del ciclo principal (ej. forEach)
+
+    //console.table(itemsParaBackend);
+    return itemsParaBackend;
+}
+document.addEventListener('DOMContentLoaded', () => {
+    iniciarApp();
+    if (typeof renderTarjetas === 'function') {
+        renderTarjetas();
+    }
+});
+function activarScrollRueda(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('wheel', (e) => {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                el.scrollLeft += e.deltaY;
+            }
+        });
+    }
+}
+
+// Lo activamos para ambos
+window.addEventListener('load', () => {
+    
+    activarScrollRueda('menu-cats');
+    activarScrollRueda('menu-prods');
+    activarScrollRueda('origen-container');
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    // TODO tu código que busca IDs debe ir aquí adentro
+    const menuProds = document.getElementById('menu-prods');
+    
+    if (menuProds) {
+         console.log("¡Encontrado! Ya podemos meter productos.");
+        // Asegúrese de llamar a renderPaymentButtons() cuando la página cargue
+    // Puede ponerlo al final de su script o dentro de una función de inicio.
+    renderPaymentButtons();
+        // Aquí puedes llamar a tu función de renderizado
+    } else {
+        console.error("Sigue sin aparecer... revisa si el ID tiene espacios.");
+    }
+});
+
+/**
+ * Función gatillo al presionar un botón de pago
+ */
+function selectPaymentType(val) {
+    // 1. Actualizamos la variable global para que 'registrarVentaFinal' sepa qué cobrar
+    tipoPago = val; 
+    console.log("💳 Iniciando registro automático con:", tipoPago);
+ 
+    // 2. Feedback visual (Opcional, pero útil para ver qué se presionó un instante)
+    const buttons = document.querySelectorAll('.btn-payment');
+    buttons.forEach(b => {
+        b.classList.remove('active');
+        if (b.innerText === val) b.classList.add('active');
+    });
+
+    // 3. EL DISPARO: Ejecutamos su función de grabado directamente
+    registrarVentaFinal();
+}
+// --- VARIABLES DE ESTADO ---
+let pedidoActivo = { idGrupo: null, cliente: "Mostrador", origen: "PRESENCIAL", items: [], total: 0, estado: "PENDIENTE" };
+//let pedidoActivo = { cliente: "", items: [], idGrupo: null, estado: "PENDIENTE" };
+let cocina = [];
+let itemTemporal = null;
+let entrega = [];
+let caja = { EFECTIVO: 0, TARJETA: 0, PENDIENTE: 0, TOTAL: 0 };
+
+
+function nuevoPedido() {
+    const inputNombre = document.getElementById('input-cliente');
+    
+    // 1. Limpiamos el texto
+    if (inputNombre) {
+        inputNombre.value = "";
+        inputNombre.focus(); 
+    }
+    
+    // 2. Reiniciamos el objeto (Vaciamos la bolsa interna)
+    pedidoActivo = { cliente: "Mostrador", items: [] };
+    
+    // 3. Reseteamos la interfaz visual
+    const luz = document.getElementById('txt-cli');
+    if (luz) {
+        luz.innerText = "ESPERANDO CLIENTE";
+        luz.style.color = "white";
+    }
+    
+    const metodoPago = document.getElementById('metodo-pago');
+    if (metodoPago) metodoPago.value = "PENDIENTE";
+
+    // 4. Refrescamos la bolsa (Ahora sí se verá vacía)
+    renderBolsa();   
+
+    // --- NUEVO: LIMPIEZA DE MEMORIA TEMPORAL ---
+    // Si la "X" se presiona, asumimos que no hay ningún pedido "en edición" activo.
+    // Esto evita que se queden IDs de pedidos antiguos flotando.
+    console.log("Sistema reseteado: Bolsa vacía.");
+}
+
+
+
+const ordenado = [...cocina].sort((a, b) => {
+    if (a.categoria === b.categoria) return a.pos - b.pos;
+    return a.categoria.localeCompare(b.categoria);
+});
+
+
+function renderCats() {
+     // Usamos Array.from en lugar de los tres puntos
+     
+    const cats = Array.from(new Set(productos.map(function(p) { return p.cat; })));
+        document.getElementById('menu-cats').innerHTML = cats.map(c => 
+        `<button class="btn btn-cat" onclick="renderProds('${c}', this)">${c}</button>`
+    ).join('');
+}
+
+
+function renderProds(cat, btn) {
+    const contenedor = document.getElementById('menu-prods');
+    // quitar selección anterior
+      document.querySelectorAll('.btn-cat')
+        .forEach(b => b.classList.remove('active'));
+
+      // marcar actual
+      btn.classList.add('active');
+
+  // tu lógica original
+  // ejemplo:
+  
+    // 1. Limpiamos lo que había antes para que no se amontonen
+    contenedor.innerHTML ="";//`<h3 style="color:var(--blue); width:100%; padding:10px; margin:0;">Tipos de ${cat}:</h3>`;
+    
+    // 2. Filtramos y creamos los botones
+    const filtrados = productos.filter(p => p.cat === cat);
+
+    filtrados.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-prod'; // Aquí aplicas las clases
+        // ESTILOS DE ALTA PRIORIDAD
+        btn.style.backgroundColor = "#2980b9"; // Fondo azul oscuro
+        btn.style.color = "#ffffff";           // Texto blanco puro
+        btn.style.margin = "4px";
+        btn.textContent = p.nombre;
+        // AQUÍ ESTÁ EL CAMBIO DE LÓGICA
+        btn.onclick = () => {
+            // Usamos toUpperCase() para que no importe si es "Bebida" o "BEBIDA"
+            if (p.cat.toUpperCase() === 'BEBIDA') {
+                console.log("⚡ Vía rápida para bebida:", p.nombre);
+                agregarBebidaDirecto(p);
+            } else {
+                abrirModal(p.id);
+            }
+        };
+        
+        contenedor.appendChild(btn);
+    });
+    
+    
+    // 3. Hacemos que la pantalla baje automáticamente //para ver los productos
+    //contenedor.scrollIntoView({ behavior: 'smooth' });
+}
+
+function agregarBebidaDirecto(p) {
+    console.log("🛠️ Agregando bebida de forma aislada...");
+
+    // 1. CREACIÓN DEL OBJETO GARANTIZADO
+    // Creamos un objeto que ya tiene TODO lo necesario para no causar errores de 'undefined'
+    const nuevaBebida = {
+        nombre: p.nombre,
+        precio: parseFloat(p.precio) || 0,
+        acompanamiento: "N/A",
+        salsas: [],
+        ajuste: 0,
+        nota: "Bebida",
+        categoria: "Bebida",
+        estado: "ENTREGADO" // Al ser bebida, sale directo de la bolsa
+    };
+
+    // 2. ENVIAR A LA BOLSA (Sin depender de la pantalla)
+    // Aquí el truco: Si sumarABolsa puede recibir un parámetro, úsalo.
+    // Si no, asignamos a la variable global que usa tu sistema.
+    
+     itemTemporal = nuevaBebida; 
+     
+    // Ejecutamos la suma (Asegúrate que sumarABolsa no valide contra inputs si itemTemporal ya existe)
+    sumarABolsa(); 
+
+    // 3. LIMPIEZA SILENCIOSA (Opcional, solo si los inputs existen)
+    ['ajuste-producto', 'nota-producto'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = (id === 'ajuste-producto' ? 0 : "");
+    });
+
+    console.log("✅ Bebida agregada: ", nuevaBebida.nombre);
+}
+
+function abrirModal(id) {
+    const p = productos.find(x => x.id == id); 
+    console.log("abrirmodal p",p);
+    if (!p) return;
+
+    itemTemporal = Object.assign({}, p, { 
+        acompanamiento: "", 
+        salsas: [], 
+        ajuste: 0, 
+        nota: "" 
+    });
+
+    document.getElementById('modal-body').innerHTML = `
+        <h3 style="margin-bottom:5px;">${p.nombre}</h3>
+        <p style="color:var(--blue); font-weight:bold; margin-top:0;">$${p.precio}</p>
+        
+        ${p.combos.length ? `<b>Acompañamiento:</b><br><div class="contenedor-pastillas">${p.combos.map(c => `
+            <label class="pastilla">
+                <input type="radio" name="c" onchange="itemTemporal.acompanamiento='${c}'"> ${c}
+            </label>`).join('')}</div>` : ''}
+        
+        <br><b>Salsas:</b><br><div class="contenedor-pastillas">${p.salsas.map(s => `
+            <label class="pastilla">
+                <input type="checkbox" onchange="clickSalsa('${s}')"> ${s}
+            </label>`).join('')}</div>
+        
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <div style="flex:1;">
+                <b>Ajuste $:</b> 
+                <input type="number" id="aj" value="0" class="input-pos" oninput="itemTemporal.ajuste=parseInt(this.value)||0">
+            </div>
+            <div style="flex:2;">
+                <b>Notas:</b>
+                <textarea id="nt" placeholder="Ej: Sin cebolla..." class="input-pos" style="height:40px;"></textarea>
+            </div>
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px;">
+            <div style="display:flex; gap:8px;">
+                <button class="btn" style="background:#f39c12; flex:1;" onclick="sumarABolsa(true)">REPITE 🔄</button>
+                <button class="btn" style="background:var(--green); flex:2;" onclick="sumarABolsa(false)">AÑADIR AL PEDIDO</button>
+            </div>
+            <button class="btn" style="background:#95a5a6;" onclick="cerrarModal()">CANCELAR</button>
+        </div>
+    `;
+    document.getElementById('modal').style.display = 'flex';
+}
+
+
+function clickSalsa(s) {
+    const i = itemTemporal.salsas.indexOf(s);
+    console.log("clicksalsa itemtemporal ",itemTemporal);
+    i > -1 ? itemTemporal.salsas.splice(i, 1) : itemTemporal.salsas.push(s);
+}
+
+function sumarABolsa(esRepetido = false) {
+    if (!itemTemporal || !itemTemporal.nombre) return;
+    
+    const inputAj = document.getElementById('aj');
+    const inputNt = document.getElementById('nt');
+    
+    itemTemporal.ajuste = inputAj ? parseFloat(inputAj.value) || 0 : 0;
+    itemTemporal.nota = inputNt ? inputNt.value : "";
+    itemTemporal.precioTotalItem = (itemTemporal.precio || 0) + itemTemporal.ajuste;
+
+    if (itemTemporal.categoria.toUpperCase()==="BEBIDA") {
+        itemTemporal.nota ="";
+        itemTemporal.ajuste=0;
+        itemTemporal.estado ="ENTREGADO";
+        itemTemporal.precioTotalItem = itemTemporal.precio;
+
+    }
+    // --- CAMBIO CRÍTICO AQUÍ ---
+    // Clonamos el item Y clonamos explícitamente el array de salsas si existe
+    const itemAGuardar = { 
+        ...itemTemporal,
+        salsas: itemTemporal.salsas ? [...itemTemporal.salsas] : [] 
+    };
+    // 👇 SOLUCIÓN AL ERROR: Asegura que el pedido y su lista existan
+    if (!pedidoActivo) {
+        pedidoActivo = {};
+    }
+    if (!pedidoActivo.items) {
+        pedidoActivo.items = [];
+    }
+console.log("sumar a bolsa itemAGuardar ",itemAGuardar);
+    pedidoActivo.items.push(itemAGuardar);
+
+    if (esRepetido) {
+        // ... (tu código de feedback visual) ...
+        
+        // OPCIONAL: Si quieres que al repetir el usuario empiece de cero con las salsas
+        // itemTemporal.salsas = []; 
+        // actualizarCheckboxesSalsas(); 
+    } else {
+        cerrarModal();
+        itemTemporal = {}; 
+    }
+console.table(" pedidoActivo aqui ",pedidoActivo);
+    renderBolsa();
+}
+
+function renderBolsa() {
+    const lista = document.getElementById('lista-bolsa');
+    
+    if (!lista) return;
+    if (!pedidoActivo || !pedidoActivo.items) {
+    console.warn("Validación abortada: 'pedidoActivo' o 'items' es null/undefined.");
+    return; 
+  }  
+
+
+      // --- LÓGICA DE AGRUPACIÓN (SÍNTESIS) ---
+    const agrupado = {};
+    pedidoActivo.items.forEach(it => {
+        if (!agrupado[it.nombre]) {
+            agrupado[it.nombre] = { totalCant: 0, precioSuma: 0, variaciones: {} };
+        }
+        agrupado[it.nombre].totalCant++;
+        agrupado[it.nombre].precioSuma += it.precioTotalItem;
+        const llaveVar = `${capitalizar(it.acompanamiento)} | ${capitalizar(it.salsas.join(', '))} | ${it.nota}`.trim();
+        agrupado[it.nombre].variaciones[llaveVar] = (agrupado[it.nombre].variaciones[llaveVar] || 0) + 1;
+    });
+
+    // --- DIBUJAR LA BOLSA ---
+    lista.innerHTML = Object.keys(agrupado).map(nombre => {
+        const info = agrupado[nombre];
+    return `
+            <div class="item-bolsa-grupo" style="border-bottom: 1px solid #eee; padding: 6px 0; width: 100%;"> 
+                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; line-height:1;"> 
+                    <span>${info.totalCant} ${nombre.toUpperCase()}</span>
+                    <span>$${info.precioSuma}</span>
+                </div>
+                <div style="font-size:0.95rem; color:#555; margin-left:15px; margin-top:2px;"> 
+                    ${Object.keys(info.variaciones).map(v => {
+                        const partes = v.split('|').map(x => x.trim());
+                        const acompanamiento = partes[0];
+                        const salsas = partes[1];
+                        const nota = partes[2];
+
+                        // Si todo está vacío o es N/A (como en bebidas), le damos una etiqueta visual limpia
+                        let limpio = [acompanamiento, salsas, nota]
+                            .filter(x => x && x !== 'N/A' && x !== 'undefined')
+                            .join(' | ');
+                        
+                        if (!limpio) limpio = "Tradicional";
+
+                        // Escapamos comillas simples por si el nombre del producto o nota las lleva
+                        const llaveVariacionEscapada = v.replace(/'/g, "\\'");
+                        const nombreEscapado = nombre.replace(/'/g, "\\'");
+
+                        return `
+                            <div style="margin-bottom:3px; line-height:1.2; display:flex; justify-content:space-between; align-items:center; width:95%;"> 
+                                <span>
+                                    <b style="color:var(--blue, #2196F3);">${info.variaciones[v]}x</b> ${limpio}
+                                </span>
+                                <!-- Botón de descarte inmediato en caliente -->
+                                <button onclick="eliminarFilaEspecificaDeBolsa('${nombreEscapado}', '${llaveVariacionEscapada}')" 
+                                        style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:0.9rem; padding: 0 6px; font-weight:bold;"
+                                        title="Eliminar una unidad">
+                                    ❌
+                                </button>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>`;
+    }).join('');
+
+
+
+   // 2. CÁLCULO DE TOTALES
+    const subtotalProductos = pedidoActivo.items.reduce((a, b) => a + (b.precioTotalItem || 0), 0);
+    // Capturamos el ajuste global (si existe el input en el DOM)
+    const inputAjuste = document.getElementById('ajuste-global');
+    const ajusteGlobal = inputAjuste ? parseFloat(inputAjuste.value) || 0 : 0;
+    const totalFinal = subtotalProductos + ajusteGlobal;
+    // Guardamos el total en el objeto global por si lo necesitamos al enviar
+    pedidoActivo.total = totalFinal;
+
+    const txtTotal = document.getElementById('total-bolsa');
+    if (txtTotal) txtTotal.innerText = `Total: $${totalFinal}`;
+
+    // / Visibilidad de botones
+const tieneItems = pedidoActivo.items.length > 0;
+['btn-enviar', 'btn-cobrar', 'btn-limpiar-bolsa'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.style.display = tieneItems ? 'block' : 'none';
+});
+
+/* ==========================================================================
+   🛠️ TU NUEVA REGLA: OCULTAR LA BARRA DE AJUSTE GLOBAL (+/- $)
+   ========================================================================== */
+// Capturamos el div contenedor gris de '+/- $' subiendo al padre de tu input
+const barraAjuste = document.getElementById('ajuste-global')?.parentElement;
+
+if (barraAjuste) {
+    // Si la bolsa tiene ítems se muestra en 'flex', si está vacía se oculta con 'none'
+    barraAjuste.style.display = tieneItems ? 'flex' : 'none';
+}
+    
+}
+// --- 1. FUNCIÓN PRINCIPAL DE ENVÍO (MODERNIZADA A VANILLA JS) ---
+let pedidosEnProceso = new Set();
+// Agregamos el parámetro con un valor por defecto (true)
+async function enviarCocina(limpiarInterfaz = true) {
+  const inputNombre = document.getElementById('input-cliente');
+  const totalVentaElement = document.getElementById('total-bolsa');
+  const ajusteGlobal = parseFloat(document.getElementById('ajuste-global')?.value) || 0;
+
+  const cliente = (inputNombre?.value.trim()) || "Mostrador";
+
+  if (!pedidoActivo.items || pedidoActivo.items.length === 0) {
+    Swal.fire("Bolsa vacía", "No hay productos para procesar", "warning");
+    return;
+  }
+
+  // 🔑 REUTILIZAR O CREAR ID
+  if (!pedidoActivo.idGrupo) {
+    pedidoActivo.idGrupo = "id-" + Date.now();
+  }
+  
+  pedidoActivo.cliente = cliente;
+  pedidoActivo.ajusteGlobal = ajusteGlobal;
+  
+  const todosSonBebidas = pedidoActivo.items.every(item => item.categoria.toUpperCase() === "BEBIDA");
+  
+  if (todosSonBebidas) {
+    pedidoActivo.estado = "FINALIZADO";
+  } else {
+    // revisar caso de repetición de pedido
+    pedidoActivo.estado = "PENDIENTE";
+  }
+
+  // Estructuramos el objeto limpio que viajará a la persistencia
+  const itemsLimpios = pedidoActivo.items.map(item => ({
+    itemTs: item.itemTs || `${Date.now()}_${Math.random()}`,
+    id: item.id || null,
+    nombre: item.nombre,
+    categoria: item.categoria,
+    precio: Number(item.precio) || 0,
+    precioTotalItem: Number(item.precioTotalItem) || 0,
+    ajuste: Number(item.ajuste) || 0,
+    acompanamiento: item.acompanamiento || null,
+    salsas: Array.isArray(item.salsas) ? item.salsas : [],
+    nota: item.nota || ""
+  }));
+
+  const pedidoParaEnviar = {
+    idGrupo: pedidoActivo.idGrupo,
+    //cliente: cliente?.trim() || "Sin nombre",
+    cliente: pedidoActivo.cliente?.trim() || "Sin nombre",
+    origen: pedidoActivo.origen || "PRESENCIAL",
+    total: pedidoActivo.total || 0,
+    tipoPago: pedidoActivo.tipoPago || "",
+    timestamp: Date.now(), // 🔥 Clave para trazabilidad
+    pagado: Boolean(pedidoActivo.pagado),
+    ajusteGlobal: ajusteGlobal || 0,
+    estado: pedidoActivo.estado, 
+    items: itemsLimpios
+  };
+
+  if (!pedidoParaEnviar.items.length) {
+    Swal.fire("Pedido vacío", "No hay productos para enviar", "warning");
+    return;
+  }
+// =========================================================================
+  // 🛡️ NUEVO: Inicializar Escudo de Estados Inmutables contra Desfases
+  // =========================================================================
+  
+  // Si todos son bebidas, el estado de cocina ya nace como 'FINALIZADO'
+  const estadoCocinaInicial = (pedidoParaEnviar.estado === "FINALIZADO") ? "FINALIZADO" : null;
+  // Si por alguna razón el objeto ya venía marcado como pagado (ej. canal digital), se respeta; si no, null
+  const estadoPagadoInicial = pedidoParaEnviar.pagado ? "PAGADO" : null;
+
+  // Traer el arreglo de control o inicializarlo vacío
+  // 1. Variable simple en memoria, no en localStorage
+    
+  //let controlEstados = JSON.parse(localStorage.getItem('control_estados_terminales')) || [];
+
+  // 2. Bloqueo de doble clic en memoria (sin localStorage)
+  if (pedidosEnProceso.has(pedidoActivo.idGrupo)) return;
+  pedidosEnProceso.add(pedidoActivo.idGrupo);
+  
+  // Control de interfaz (Bloquear doble click accidental)
+  const btnCocina = document.getElementById('btn-enviar-cocina');
+  if (btnCocina) btnCocina.disabled = true;
+
+  try {
+    // 1. Sincronización e inversión en Memoria Global (KDS / POS)
+    const existe = pedidosEnEspera.findIndex(p => p.idGrupo === pedidoParaEnviar.idGrupo);
+    if (existe !== -1) {
+      pedidosEnEspera[existe] = pedidoParaEnviar;
+    } else {
+      pedidosEnEspera.unshift(pedidoParaEnviar); // Lo mete al inicio de la fila
+    }
+
+    // 2. ACTICACIÓN DEL ESPEJO: Guardamos inmediatamente en el almacenamiento local
+    // para que la aduana del sincronizador lo reconozca como un pedido vivo de esta sesión.
+    localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
+    console.log(`[KDS Local] Guardado y persistido en Storage: ${pedidoParaEnviar.idGrupo}`);
+
+    // 4. Liberamos el botón de inmediato para el siguiente pedido
+    if (btnCocina) btnCocina.disabled = false; 
+    if (typeof mostrarNotificacion === "function") {
+      mostrarNotificacion("👨‍🍳 Pedido enviado a Cocina");
+    }
+
+    // 🌟 PASO B: VERDADERO SEGUNDO PLANO (Envío asíncrono a Google Sheets)
+    sincronizarPedidoEnNube(pedidoParaEnviar)
+      .then(resultadoNube => {
+        console.log("☁️ [Sheets] Sincronización remota exitosa:", resultadoNube);
+        
+        // APAGAMOS BLOQUEOS: Forzamos a que el motor despierte en cuanto la nube confirme
+        bloqueoSincronizacion = false;
+        if (typeof sincronizadorPedidos === 'function') sincronizadorPedidos();
+      })
+      .catch(errNube => {
+        console.warn("⚠️ [Sheets Offline] Falló el envío remoto, guardado solo en local:", errNube);
+        if (typeof mostrarNotificacion === "function") {
+          mostrarNotificacion("⚠️ Guardado local (Nube en cola)");
+        }
+      });
+
+  } catch (error) {
+    console.error("Error crítico en la máquina local:", error);
+    Swal.fire("Error Local", "No se pudo procesar el pedido en el navegador", "error");
+    if (btnCocina) btnCocina.disabled = false;
+  }
+
+  // Al final, donde se limpia la interfaz, condicionamos la ejecución:
+  if (limpiarInterfaz) {
+      nuevoPedido();
+      if (typeof renderTarjetas === 'function') renderTarjetas();
+      if (typeof renderBolsa === 'function') renderBolsa();
+      
+      // FORZAR DIBUJO DE LA BANDEJA: Invocamos la función exacta para pintar el ticket de inmediato
+      if (typeof renderTickets === 'function') {
+          renderTickets(); 
+      }
+  } else {
+      console.log("[Cocina] Pedido enviado pero retenido en memoria para el cobro.");
+  }
+  renderTickets();
+}
+
+
+// --- 2. FUNCIÓN AUXILIAR COHERENCIA DE ARREGLOS (REESTRUCTURADA) ---
+URL_API="https://script.google.com/macros/s/AKfycbxB6aSAzuzl3MyGHFLmG-QedDhuhnYhSStFJTdiM7ZlPa4oF2EmmoGpSnBx4fFDTgGc/exec";
+
+
+async function prueba() {
+
+  const resp =
+    await fetch(URL_API, {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "text/plain;charset=utf-8"
+      },
+
+      body: JSON.stringify({
+        hola: "mundo"
+      })
+
+    });
+
+  const texto =
+    await resp.text();
+
+  
+
+}
+async function sincronizarPedidoEnNube(pedido) {
+
+  try {
+
+    console.log("📤 Enviando pedido...");
+
+    const resp =
+      await fetch(URL_API, {
+
+        method: "POST",
+
+        redirect: "follow",
+
+        headers: {
+          "Content-Type":
+            "text/plain;charset=utf-8"
+        },
+
+        body: JSON.stringify({
+
+          accion:
+            "SINCRONIZAR_PEDIDO",
+
+          payload: pedido
+
+        })
+
+      });
+
+    console.log("STATUS:", resp.status);
+
+    const texto =
+      await resp.text();
+
+    console.log("RESPUESTA:", texto);
+
+    return texto;
+
+  } catch(error) {
+
+    console.error(
+      "ERROR FETCH:",
+      error
+    );
+
+    throw error;
+
+  }
+
+}
+function sincronizarEstadoLocal(pedido) {
+  console.log("Pedido en sincronía local: ", pedido);
+
+  // 1. Estructuramos el objeto clonando el pedido dentro de la propiedad '.pedido'
+  // Esto garantiza que sea EXACTAMENTE idéntico a cómo lo lee 'cargarPedidosPOS()' desde el TSV
+  const pedidoEstructurado = {
+    idGrupo: pedido.idGrupo,
+    cliente: pedido.cliente || 'Sin Nombre',
+    origen: pedido.origen || 'POS',
+    pagado: pedido.pagado === true || pedido.pagado === "SI", // Normalizado a Booleano o String según uses
+    total: pedido.total,
+    estado: pedido.estado || "PENDIENTE",
+    pedido: { ...pedido } // 🔥 CLAVE: Mantiene la compatibilidad con tus tarjetas y filtros
+  };
+
+  // 2. Actualizar el arreglo global 'pedidosEnEspera'
+  const existe = pedidosEnEspera.findIndex(p => p.idGrupo === pedido.idGrupo);
+
+  if (existe !== -1) {
+    // Si ya existía (una edición rápida en caja), lo actualizamos manteniendo la estructura
+    pedidosEnEspera[existe] = pedidoEstructurado;
+  } else {
+    // Si es un pedido nuevo, va directo al inicio (.unshift) para control visual inmediato del cajero
+    pedidosEnEspera.unshift(pedidoEstructurado);
+  }
+
+  // 3. Persistencia local para proteger el estado ante recargas accidentales (F5)
+  localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
+  
+  console.log("pedidosEnEspera actualizado en caliente: ", pedidosEnEspera);
+}
+
+// --- 3. NUEVA FUNCIÓN: PERSISTENCIA LOCAL (MOLDE DE RESPALDO) ---
+function guardarEnAlmacenamientoLocal(pedido) {
+  return new Promise((resolve, reject) => {
+    try {
+      // 1. Leemos directamente la variable unificada de la interfaz
+      const pedidosLocales = JSON.parse(localStorage.getItem("pedidosEnEspera")) || [];
+      const { idGrupo, estado } = pedido;
+      
+      // 2. Forzar que 'pagado' sea estrictamente booleano para evitar los strings "NO"/"SI"
+      const pagadoBooleano = pedido.pagado === true || 
+                             String(pedido.pagado).toUpperCase() === 'TRUE' || 
+                             String(pedido.pagado).toUpperCase() === 'SI';
+
+      // 3. Normalizamos el objeto antes de guardarlo para que coincida con el renderizador
+      const pedidoEstructurado = {
+        idGrupo: idGrupo,
+        cliente: pedido.cliente || (pedido.pedido && pedido.pedido.cliente) || "Sin Nombre",
+        origen: pedido.origen || "LOCAL",
+        pagado: pagadoBooleano,
+        total: Number(pedido.total) || 0,
+        estado: estado || "PENDIENTE",
+        pedido: pedido.pedido ? pedido.pedido : pedido // Nos aseguramos de mantener el sub-objeto que pide renderTickets
+      };
+
+      const indiceExistente = pedidosLocales.findIndex(fila => fila.idGrupo === idGrupo);
+
+      if (indiceExistente !== -1) {
+        pedidosLocales[indiceExistente] = pedidoEstructurado;
+      } else {
+        pedidosLocales.push(pedidoEstructurado);
+      }
+
+      // 4. Guardamos en la llave unificada de 7LocalStorage y actualizamos la variable global en caliente
+      localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosLocales));
+      pedidosEnEspera = pedidosLocales; 
+
+      resolve("GUARDADO_LOCAL_EXITOSO");
+    } catch (error) {
+      console.error("Error en guardarEnAlmacenamientoLocal:", error);
+      reject(error);
+    }
+  });
+}
+
+// --- 4. NUEVA FUNCIÓN: CONECTOR DE RED (REEMPLAZA GOOGLE.SCRIPT.RUN) ---
+// Aquí puedes conectar mediante un fetch() a tu API, webhook o servidor en producción.
+// Por ahora, emula el retraso nativo para asegurar la asincronía.
+//function sincronizarPedidoEnNube2(pedido) {
+
+ // helper
+function resetBoton(btn){
+  btn.dataset.enviando = "false";
+  btn.style.opacity = "1";
+  btn.innerText = "ENVIAR A COCINA";
+}
+    // NOTA: No llamamos a google.script.run aquí para que no grabe 
+    // en el Excel con el pago equivocado.
+
+//function renderKDS() {
+    
+
+
+function renderCaja() {
+    document.getElementById('resumen-caja').innerHTML = `Efectivo: $${caja.EFECTIVO} | Tarjeta: $${caja.TARJETA} | <b style="color:red">Pendientes: $${caja.PENDIENTE}</b><br><b>TOTAL: $${caja.TOTAL}</b>`;
+}
+
+function cerrarModal() { document.getElementById('modal').style.display = 'none'; }
+
+renderCaja();
+async function cargarMenuReal() {
+    const res = await fetch(URL_GOOGLE);
+    const datosNuevos = await res.json();
+    if(datosNuevos.length > 0) {
+        productos = datosNuevos; // Reemplaza la lista fija por la del Excel
+        renderCats(); 
+    }
+}
+
+// Descomenta la siguiente línea cuando tengas la URL lista:
+// cargarMenuReal();
+// Monitor de conexión en tiempo real
+window.addEventListener('online', () => {
+    const status = document.getElementById('txt-cli');
+    status.style.borderBottom = "2px solid #27ae60";
+    console.log("Conexión restablecida. Sincronizando pendientes  ");
+    // Aquí podrías disparar la función de reintento que vimos antes
+});
+
+
+// Ejecutamos la carga apenas abre el archivo
+//window.onload = cargarDatosDesdeExcel;
+  const el = document.getElementById('menu-cats');
+  el.addEventListener('wheel', (evt) => {
+    evt.preventDefault();
+    el.scrollLeft += evt.deltaY;
+  });
+
+
+
+// Función auxiliar para centralizar el estilo de la interfaz
+function setUIReadOnly(isReadOnly) {
+    const btns = document.querySelectorAll(".btn-enviar-cocina, .btn-cat, .btn-prod");
+    btns.forEach(btn => {
+        btn.disabled = isReadOnly;
+        btn.style.opacity = isReadOnly ? "0.5" : "1";
+        btn.style.cursor = isReadOnly ? "not-allowed" : "pointer";
+        if (btn.classList.contains('btn-cat') || btn.classList.contains('btn-prod')) {
+            btn.style.display = isReadOnly ? "none" : "";
+        }
+    });
+}
+async function recuperarPedido(idGrupo) {
+    console.group(`🔎 recuperarPedido(${idGrupo})`);
+    try {
+        const pedido = pedidosEnEspera.find(p => p.idGrupo === idGrupo);
+        if (!pedido) throw new Error("Pedido no encontrado en memoria local.");
+
+        pedidoActivo = structuredClone(pedido);
+        const estado = (pedidoActivo.estado || "").trim().toUpperCase();
+        const pagado = !!pedidoActivo.pagado;
+
+        // 1. Manejo de Entrega Finalizada (Entrega al cliente)
+        if (pagado && estado === "FINALIZADO") {
+            const { isConfirmed } = await Swal.fire({
+                title: "¿Entregar pedido?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Sí, entregar",
+                cancelButtonText: "Cancelar"
+            });
+
+            if (!isConfirmed) {
+                console.groupEnd(); // Cerramos el grupo de consola de forma segura
+                return;
+            }
+
+            // 🌟 PASO CRÍTICO 1: Bloqueo inmediato en memoria local
+            if (typeof idsPedidosVendidosInicio !== 'undefined') {
+                idsPedidosVendidosInicio.push(idGrupo);
+            }
+
+            // 🌟 PASO CRÍTICO 2: Limpieza local instantánea (Estrategia Optimista)
+            // Borramos de la RAM y del disco ANTES de hablar con internet para que el POS sea veloz.
+            pedidosEnEspera = pedidosEnEspera.filter(p => p.idGrupo !== idGrupo);
+            try {
+                localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
+            } catch (e) {
+                console.error("Error guardando cambios en disco:", e);
+            }
+
+            pedidoActivo = null;
+            setUIReadOnly(false); // Liberamos la interfaz de inmediato para el siguiente cliente
+
+            // Forzamos la actualización visual instantánea
+            actualizarYPersistirPedidos([]); 
+            renderBolsa();
+            renderTickets();
+
+            // 🌐 PASO CRÍTICO 3: Sincronización en segundo plano (Background)
+            // No usamos 'await' aquí para que el cajero no espere a la red inestable.
+            (async () => {
+                try {
+                    console.log(`🌐 Sincronizando entrega de ${idGrupo} con la nube en segundo plano...`);
+                    
+                    await actualizarEstadoEnVentas(idGrupo, "FINALIZADO");
+                    
+                    const response = await fetch(URL_API, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain" },
+                        body: JSON.stringify({ accion: "ELIMINAR_PEDIDO", payload: { idGrupo } })
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                    const data = await response.json();
+                    if (!data?.ok) throw new Error("El servidor rechazó la eliminación.");
+                    
+                    console.log(`✅ Sincronización exitosa en la nube para el pedido ${idGrupo}`);
+                                } catch (err) {
+                    // 🛡️ ESCUDO DE RED: Informamos el fallo real en consola una sola vez
+                    console.error(`❌ Falla de red instantánea para pedido ${idGrupo}: ${err.message}. Guardando en cola offline...`);
+    
+                    // Aseguramos que la variable exista antes de usar métodos sobre ella
+                    if (typeof colaReintentosOffline !== 'undefined') {
+                        // Si el ID ya no estaba en la cola, lo inyectamos de forma segura
+                        if (!colaReintentosOffline.includes(idGrupo)) {
+                            colaReintentosOffline.push(idGrupo);
+                            localStorage.setItem("colaReintentosOffline", JSON.stringify(colaReintentosOffline));
+                            console.log(`📦 Pedido ${idGrupo} respaldado en disco duro para reintento automático.`);
+                        }
+                    }
+                }
+            })();
+
+            console.groupEnd();
+            return; // Terminamos con éxito el flujo del cajero y liberamos la pantalla
+        }
+
+        // 2. Manejo de Edición / Bloqueo (Si no está finalizado/pagado)
+        else {
+            setUIReadOnly(pagado || estado !== "PENDIENTE");
+            document.getElementById("input-cliente").value = pedidoActivo.cliente || "";
+            document.getElementById("ajuste-global").value = pedidoActivo.ajusteGlobal ?? 0;
+            
+            const btnEnviar = document.getElementById("btn-enviar");
+            if (btnEnviar) btnEnviar.disabled = (estado !== "PENDIENTE");
+        }
+
+        renderBolsa();
+        renderTickets();
+
+    } catch (error) {
+        Swal.fire("Error", error.message, "error");
+    } finally {
+        console.groupEnd();
+    }
+}
+
+async function recuperarPedido28jun(idGrupo) {
+    console.group(`🔎 recuperarPedido(${idGrupo})`);
+    try {
+        const pedido = pedidosEnEspera.find(p => p.idGrupo === idGrupo);
+        if (!pedido) throw new Error("Pedido no encontrado en memoria local.");
+
+        pedidoActivo = structuredClone(pedido);
+        const estado = (pedidoActivo.estado || "").trim().toUpperCase();
+        const pagado = !!pedidoActivo.pagado;
+
+        // 1. Manejo de Entrega Finalizada (Opción B con Lock Semántico)
+if (pagado && estado === "FINALIZADO") {
+    const { isConfirmed } = await Swal.fire({
+        title: "¿Entregar pedido?",
+        icon: "question",
+        showCancelButton: true
+    });
+
+    if (!isConfirmed) return;
+
+    // 🌟 LA SOLUCIÓN CRÍTICA:
+    // Guardamos el ID en el historial de exclusión local INMEDIATAMENTE.
+    // Así, el Paso 7 sabrá que este pedido ya murió, aunque la nube parpadee vacía.
+    if (typeof idsPedidosVendidosInicio !== 'undefined') {
+        idsPedidosVendidosInicio.push(idGrupo);
+    }
+
+    // El resto de tus llamadas asíncronas siguen corriendo de fondo...
+    await actualizarEstadoEnVentas(idGrupo, "FINALIZADO");
+    
+    const response = await fetch(URL_API, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ accion: "ELIMINAR_PEDIDO", payload: { idGrupo } })
+    });
+
+    const data = await response.json();
+    if (!data?.ok) throw new Error("Error al eliminar en el servidor.");
+
+    // Limpieza física final
+    pedidosEnEspera = pedidosEnEspera.filter(p => p.idGrupo !== idGrupo);
+    localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
+    pedidoActivo = null;
+    setUIReadOnly(false);
+
+    // Forzamos la actualización instantánea con la RAM limpia
+    actualizarYPersistirPedidos([]); 
+}
+
+        // 2. Manejo de Edición / Bloqueo
+        else {
+            setUIReadOnly(pagado || estado !== "PENDIENTE");
+            document.getElementById("input-cliente").value = pedidoActivo.cliente || "";
+            document.getElementById("ajuste-global").value = pedidoActivo.ajusteGlobal ?? 0;
+            
+            const btnEnviar = document.getElementById("btn-enviar");
+            if (btnEnviar) btnEnviar.disabled = (estado !== "PENDIENTE");
+        }
+
+        renderBolsa();
+        renderTickets();
+
+    } catch (error) {
+        Swal.fire("Error", error.message, "error");
+    } finally {
+        console.groupEnd();
+    }
+}
+
+
+
+
+
+function restaurarBotonRegistro() {
+    if (typeof btnRegistro !== 'undefined' && btnRegistro) {
+        btnRegistro.disabled = false;
+        btnRegistro.innerText = "💰 ELIMINAR PEDIDO";
+    }
+}
+
+
+    function verificarPedidoCompleto(idPedido) {
+    // Busca en la lista de cocina si quedan productos pendientes para este ID
+    const pendientes = cocina.filter(p => p.id === idPedido && p.estado !== "Listo");
+
+    if (pendientes.length === 0) {
+        // SI YA NO HAY PENDIENTES:
+        marcarTarjetaComoLista(idPedido); // Cambia el borde a VERDE en el POS
+    }
+    }
+    
+    function crearBotonPedidoListo(pedido) {
+    const contenedor = document.getElementById('contenedor-pedidos-activos');
+    if (!contenedor) return;
+
+    const botonHTML = `
+        <button id="btn-${pedido.id}" 
+                onclick="bajarPedidoABolsa('${pedido.id}')" 
+                class="tarjeta-espera listo" 
+                style="background: #d4edda; border-left: 5px solid #28a745; margin-right: 10px;">
+            <b>✅ ${pedido.cliente}</b><br>
+            <small>$${pedido.total}</small>
+        </button>
+    `;
+    contenedor.insertAdjacentHTML('beforeend', botonHTML);
+    }
+    function bajarPedidoABolsa(id) {
+    const datos = JSON.parse(localStorage.getItem(id));
+    
+    // 1. Unificamos productos
+    pedidoActivo.items = [...pedidoActivo.items, ...datos.items];
+    
+    // 2. Sincronizamos el nombre en el objeto y en el input
+    pedidoActivo.cliente = datos.cliente; 
+    document.getElementById('input-cliente').value = datos.cliente;
+    
+    // 3. Actualizamos la luz de estado
+    const luz = document.getElementById('txt-cli');
+    if (luz) {
+        luz.innerText = "COBRANDO: " + datos.cliente.toUpperCase();
+        luz.style.color = "#28a745"; // Verde: listo para cobrar
+    }
+    
+    renderBolsa(); 
+    document.getElementById(`btn-${id}`).remove(); 
+    }
+
+    function obtenerConfiguracionBoton(estado, idGrupo) {
+    switch (estado) {
+        case "PENDIENTE":
+            return {
+                texto: "INICIAR PREPARACIÓN 👨‍🍳",
+                color: "#e67e22", // Naranja
+                accion: `cambiarEstadoGrupo('${idGrupo}', 'PREPARANDO')`
+            };
+        case "PREPARANDO":
+            return {
+                texto: "MARCAR COMO LISTO ✅",
+                color: "#2ecc71", // Verde
+                accion: `cambiarEstadoGrupo('${idGrupo}', 'LISTO')`
+            };
+        case "LISTO":
+            return {
+                texto: "ENTREGAR AL POS 🚀",
+                color: "#27ae60", // Verde Oscuro
+                accion: `finalizarPedidoEnCocina('${idGrupo}')`
+            };
+        default:
+            return { texto: "ERROR", color: "gray", accion: "" };
+    }
+    }
+
+    
+    function obtenerConfiguracionPedido(estado, idGrupo) {
+    //function obtenerConfiguracionPedido(estado) {
+    if (estado === "PENDIENTE") return { texto: "INICIAR 👨‍🍳", color: "#e67e22" }; // Naranja
+    if (estado === "PREPARANDO") return { texto: "¡LISTO! ✅", color: "#2ecc71" }; // Verde Claro
+    if (estado === "LISTO") return { texto: "ENTREGAR 🚀", color: "#27ae60" }; // Verde Oscuro
+    return { texto: "ERROR", color: "red" };
+}
+function cicloBotonCocina(idGrupo) {
+
+  // 1. Obtener estado REAL desde cocina
+  const itemsPedido = cocina.filter(it => it.idGrupo === idGrupo);
+  if (itemsPedido.length === 0) return;
+
+  const estadoActual = itemsPedido[0].estado;
+
+  // 2. Si ya está listo → finalizar
+  if (estadoActual === "LISTO") {
+    finalizarPedidoEnCocina(idGrupo);
+    return;
+  }
+
+  // 3. Definir siguiente estado
+  const proximo = (estadoActual === "PENDIENTE") ? "PREPARANDO" : "LISTO";
+
+  // 4. Actualizar TODOS los items
+  cocina.forEach(item => {
+    if (item.idGrupo === idGrupo) {
+      item.estado = proximo;
+      item.listoParaCobrar = (proximo === "LISTO");
+    }
+  });
+
+  // 5. Sincronizar con lista principal (opcional pero limpio)
+  sincronizarPedido(idGrupo, proximo);
+
+  // 6. Refrescar UI
+  renderKDS();
+}  
+function sincronizarPedido(idGrupo, estado) {
+  if (typeof pedidos === 'undefined') return;
+
+  const pedido = pedidos.find(p => p.idGrupo === idGrupo);
+  if (!pedido) return;
+
+  pedido.listoParaCobrar = (estado === "LISTO");
+
+  console.log(`Pedido ${idGrupo} sincronizado → ${estado}`);
+}
+
+function actualizarTarjetaVisual(idGrupo, estado) {
+  const tarjeta = document.getElementById(`tarjeta-${idGrupo}`);
+  const punto = document.getElementById(`punto-${idGrupo}`);
+
+  if (!tarjeta || !punto) return;
+
+  tarjeta.classList.remove('espera', 'preparando', 'listo');
+
+  if (estado === "PREPARANDO") {
+    tarjeta.classList.add('preparando');
+    punto.style.color = "#ffc107";
+  }
+
+  if (estado === "LISTO") {
+    tarjeta.classList.add('listo');
+    punto.style.color = "#28a745";
+  }
+}
+
+
+function gestionarCicloPedido(idGrupo, estadoActual) {
+    
+
+  let nuevoEstado;
+
+  if (estadoActual === "PENDIENTE") nuevoEstado = "PREPARANDO";
+  else if (estadoActual === "PREPARANDO") nuevoEstado = "LISTO";
+  else if (estadoActual === "LISTO") nuevoEstado = "ENTREGADO";
+  else return;
+
+  // 🟠 ACTUALIZAR COCINA
+  cocina.forEach(it => {
+    if (it.idGrupo === idGrupo) {
+      it.estado = nuevoEstado;
+    }
+  });
+
+  // 🔵 ACTUALIZAR TICKETS
+  const ticket = pedidosEnEspera.find(p => p.idGrupo === idGrupo);
+  if (ticket) {
+    ticket.estado = nuevoEstado;
+  }
+
+  // 🟢 SI ES ENTREGADO → quitar de cocina PERO mantener ticket
+  if (nuevoEstado === "ENTREGADO") {
+    cocina = cocina.filter(it => it.idGrupo !== idGrupo);
+
+    // 👉 cargar en bolsa principal SOLO si corresponde
+    const pedido = pedidosEnEspera.find(p => p.idGrupo === idGrupo);
+    
+    if (pedido) {
+      pedidoActivo.idGrupo = idGrupo;
+      pedidoActivo.cliente = pedido.cliente;
+      pedidoActivo.estado = "ENTREGADO";
+    }
+
+  }
+
+  renderKDS();
+  renderTickets();
+}
+function renderTarjetas() {
+  const cont = document.getElementById('contenedor-pedidos-activos');
+  if (!cont) return;
+
+  const pedidos = JSON.parse(localStorage.getItem("pedidosEnEspera")) || [];
+
+  cont.innerHTML = pedidos.map(p => `
+    <div class="tarjeta-espera ${p.estado}">
+      <div>${p.cliente}</div>
+      <div>${p.total}</div>
+    </div>
+  `).join('');
+}
+/**
+ * Retorna un timestamp en formato YYYY-MM-DD HH:MM:SS
+ */
+function getTime() {
+  const ahora = new Date();
+  
+  // Obtenemos los componentes de la fecha
+  const fecha = ahora.toLocaleDateString('es-CL', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).split('-').reverse().join('-'); // Ajuste para formato YYYY-MM-DD
+
+  // Obtenemos la hora (tal como la tenías)
+  const hora = ahora.toLocaleTimeString('es-CL', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+
+  return `${hora}`; // se pueden agregar más campos
+}
+
+// Ejemplo de uso:
+function renderTickets() {
+  const contenedor = document.getElementById("contenedor-pedidos-activos");
+  if (!contenedor) return;
+  // ================================================================
+  // FILTRO DEFINITIVO: Removemos pedidos terminados de la bandeja visual
+  // ================================================================
+  /*if (typeof pedidosEnEspera !== 'undefined' && Array.isArray(pedidosEnEspera)) {
+      pedidosEnEspera = pedidosEnEspera.filter(p => 
+          p.estado !== "FINALIZADO" && 
+          p.estado !== "ENTREGADO"
+      );
+  }
+  // ================================================================
+
+  // Si después del filtro la bandeja está vacía, limpiamos la pantalla y salimos de inmediato
+  if (!pedidosEnEspera || pedidosEnEspera.length === 0) {
+    contenedor.innerHTML = ""; 
+    return []; 
+  }*/
+
+  // Ahora este log solo mostrará los pedidos que REALMENTE están pendientes (Preparando/Listo)
+  console.log('renderTickets pedidosEnEspera:', pedidosEnEspera);
+console.table(pedidosEnEspera.map(p => ({ id: p.idGrupo, cliente: p.cliente })));
+
+console.log("renderTickets ejecutado:", getTime());
+
+
+  const html = pedidosEnEspera.map(p => {
+    
+    // 1. Cálculo simple de visualización (Sin lógica de negocio pesada)
+    const to = parseFloat(p.total?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+    const esPagado = p.pagado === true || p.pagado === "SI";
+    
+    // 2. Colores (La lógica ya fue resuelta en la persistencia)
+    const colorDeuda = "#C62828";
+    const colorEstado = {
+      "PENDIENTE": "#FBC02D",
+      "EN PROCESO": "#1976D2",
+      "FINALIZADO": "#388E3C",
+      "ENTREGADO": "#757575"
+    }[p.estado] || "#FBC02D";
+
+    const fraseCobro = esPagado 
+      ? `<span style="color:#388E3C; font-weight:bold;">PAGADO</span> $${to}` 
+      : `<span style="color:${colorDeuda}; font-weight:bold;">DEBE</span> $${to}`;
+
+    return `
+      <div class="tarjeta-espera"
+           onclick="recuperarPedido('${p.idGrupo}')"
+           style="border-left: 6px solid ${colorEstado}; padding: 10px; margin: 8px 5px; cursor: pointer; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 4px;">
+           
+        <div style="font-size: 1.1em; margin-bottom: 4px;"><b>${p.cliente || 'Sin Nombre'}</b></div>
+        <div style="margin-bottom: 6px; font-size: 0.95em;">${fraseCobro}</div> 
+        <div style="border-top: 1px dashed #ccc; padding-top: 5px; color:${colorEstado}; font-weight:bold; font-size: 0.85em; text-transform: uppercase;">
+          ${p.estado || "PENDIENTE"}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  contenedor.innerHTML = html;
+}
+
+/**
+ * 👑 Sincroniza el estado actual de la memoria global con la UI y el almacenamiento.
+ * Usar después de CUALQUIER cambio local (cobros, nuevos pedidos, fusiones).
+ */
+function sincronizarMemoria() {
+    // 1. Memory ➔ save localStorage
+    localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
+    
+    // 2. Memory ➔ render
+    if (typeof renderTickets === 'function') renderTickets();
+    //renderTickets(); 
+    //console.log("[RAM 👑] Interfaz y LocalStorage actualizados desde la memoria.");
+}
+function actualizarMemoriaDesdeNube(pedidosNube) {
+
+    if (!Array.isArray(pedidosNube)) {
+        console.warn(
+            "⚠️ pedidosNube no llegó como Array válido:",
+            pedidosNube
+        );
+        return;
+    }
+
+    if (pedidosNube.length === 0) {
+
+        console.log(
+            "☁️ Sin pedidos activos en la nube." 
+        );
+
+        //pedidosEnEspera = [];
+
+        sincronizarMemoria();
+
+        return;
+    }
+
+
+
+    // 1. Usamos 'pedidosEnEspera' (RAM) como nuestra base local actual, no el localStorage
+    const pedidosLocalesActuales = [...(pedidosEnEspera || [])];
+
+    // 2. Procesamos lo que viene de la Nube (Ahora es 100% seguro hacer .map)
+    let pedidosFusionados = pedidosNube.map(itemNube => {
+        if (!itemNube || !itemNube.idGrupo) return null; // Evitar procesar ítems corruptos de la red
+
+        // ¿Este pedido de la nube ya lo tenemos cargado en la memoria activa del POS?
+        const enMemoria = pedidosLocalesActuales.find(m => m && m.idGrupo === itemNube.idGrupo);
+        
+        if (enMemoria) {
+            // 👑 MEMORY IS KING: Si la RAM local ya dice PAGADO, mantenemos el TRUE.
+            const pagadoFinal = itemNube.pagado === true ? true : enMemoria.pagado;
+            
+            // Si la cocina avanzó el estado en la nube, lo adoptamos. Si no, dejamos el local.
+
+            
+
+
+            // Obtenemos los valores numéricos actuales
+            const prioridadNube = ORDEN_ESTADOS[itemNube.estado] ?? -1;
+            const prioridadMemoria = ORDEN_ESTADOS[enMemoria.estado] ?? -1;
+
+            // Asignamos el estado mayor
+            const estadoFinal = prioridadNube > prioridadMemoria ? itemNube.estado : enMemoria.estado;
+            // Extraemos los ítems sanados
+            const itemsFinales = enMemoria.items?.length > 0 ? enMemoria.items : (itemNube.items || []);
+
+            return {
+                ...enMemoria,
+                pagado: pagadoFinal,
+                estado: estadoFinal,
+                items: itemsFinales,
+                origen: "MEMORIA_SINCRO"
+            };
+        }
+
+        // Si es un pedido nuevo de la nube que no teníamos en memoria
+        return {
+            ...itemNube,
+            cliente: itemNube.cliente || "Sin Nombre",
+            origen: "NUBE_PURA"
+        };
+    }).filter(Boolean); // Limpia eventuales valores nulos que hayan saltado el control
+
+    // 3. Conservar pedidos locales creados en el POS que no han subido a la nube todavía
+    //pedidosLocalesActuales.forEach(local => {
+        //if (!local || !local.idGrupo) return;
+      //  const existeEnNube = pedidosNube.some(n => n && n.idGrupo === local.idGrupo);
+      //  if (!existeEnNube) {
+            // Lo devolvemos al inicio de la lista para que no desaparezca de la pantalla
+     //       pedidosFusionados.unshift({
+      //          ...local,
+       //         origen: "LOCAL_NUEVO_RAM"
+     //       });
+      //  }
+    //});
+console.log("=== NUBE ===");
+console.log(JSON.stringify(pedidosNube, null, 2));
+
+console.log("=== RAM ANTES ===");
+console.log(JSON.stringify(pedidosEnEspera, null, 2));
+
+    // 4. ASIGNACIÓN REY: Escribimos directamente sobre la memoria global
+    pedidosEnEspera = pedidosFusionados;
+
+    // 5. EFECTO EN CADENA AUTOMÁTICO: Memory ➔ render & Memory ➔ localStorage
+    sincronizarMemoria();
+}
+ //function finalizarPedidoEnCocina(idGrupo) {
+
+//let pedidosEnEspera = [];
+//let ultimoHash = "";
+// Traemos el texto, lo convertimos a objeto real y lo imprimimos
+function verLocal() {
+const pedidoEnStorage = localStorage.getItem('pedidosEnEspera');
+
+if (pedidoEnStorage) {
+  console.log("📦 CONTENIDO DE PEDIDO ACTIVO:");
+  console.log(JSON.parse(pedidoEnStorage));
+} else {
+  console.log("⚪ El localStorage de 'pedido_activo' está completamente vacío.");
+}
+}
+async function cargarHistorialVentasInicial0() {
+    try {
+        console.log("📥 Cargando historial de Ventas para filtro inicial...");
+        const urlVentasBase = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAifMs_lFEZSqP-RkeHjLZ_dvp7SGfL55PdM18bviZ0QbYLozodJrAWi5IuoOSpeqMrgvR5oQkKU1d/pub?gid=119666070&single=true&output=tsv';
+        
+        // 🚀 ESCUDO 1: Rompe-caché para descargar el historial exacto y presente de la hoja de Google
+        const urlVentasTSV = `${urlVentasBase}&_cb=${Date.now()}`;
+        
+        const respuesta = await fetch(urlVentasTSV);
+        
+        // 🛡️ ESCUDO 2: Validar respuesta HTTP exitosa
+        if (!respuesta.ok) {
+            throw new Error(`Error HTTP en el servidor de Google Ventas (Status: ${respuesta.status})`);
+        }
+
+        const textoVentas = await respuesta.text();
+        
+        // 🛡️ ESCUDO 3: Validar que no sea una página de error HTML
+        if (!textoVentas || textoVentas.includes("<html") || textoVentas.includes("<!DOCTYPE")) {
+            throw new Error("La respuesta recibida de Ventas no es válida (Se recibió HTML en vez de TSV).");
+        }
+
+        const filasVentas = textoVentas.split(/\r?\n/).filter(f => f.trim() !== "");
+        
+        // Procesamos localmente antes de alterar la variable global
+        const idsProcesados = filasVentas.slice(1).map(fila => {
+            const columnas = fila.split("\t");
+            
+            const idEncontrado = columnas[13];
+            const estadoEncontrado = columnas[14];
+
+            // Normalización estricta de estados para evitar fallas tipográficas
+            const estadoLimpio = estadoEncontrado ? estadoEncontrado.trim().toUpperCase() : "";
+
+            if (idEncontrado && estadoLimpio === "FINALIZADO") {
+                // 🌟 NORMALIZACIÓN CLAVE: Extrae solo los caracteres alfanuméricos/números 
+                // asegurando que coincida milimétricamente con el idGrupo del POS local
+                return String(idEncontrado).replace(/['"\s]/g, '').trim();
+                
+                // NOTA: Si tu POS usa solo los números del ID, cámbialo por:
+                // return String(idEncontrado).replace(/\D/g, '').trim().substring(0, 11);
+            }
+            
+            return "";
+        }).filter(id => id !== "");
+
+        // ASIGNACIÓN ATÓMICA SEGURA: Solo se sobreescribe la RAM si la descarga fue un éxito total
+        idsPedidosVendidosInicio = idsProcesados;
+        console.log(`✅ Historial de Ventas sincronizado: ${idsPedidosVendidosInicio.length} pedidos archivados.`);
+
+    } catch (e) {
+        // Si internet falla, 'idsPedidosVendidosInicio' conserva de forma segura lo que tenía en memoria
+        console.error("❌ No se pudo precargar el historial de ventas:", e.message);
+    }
+}
+async function cargarHistorialVentasInicial() {
+    try {
+        console.log("📥 Cargando historial de Ventas para filtro continuo...");
+        const urlVentasBase = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAifMs_lFEZSqP-RkeHjLZ_dvp7SGfL55PdM18bviZ0QbYLozodJrAWi5IuoOSpeqMrgvR5oQkKU1d/pub?gid=119666070&single=true&output=tsv';
+        
+        // 🚀 EL ÚNICO CAMBIO: Forzar a Google a darnos los datos presentes saltándose su caché
+        const urlVentasTSV = `${urlVentasBase}&_cb=${Date.now()}`;
+        
+        const respuesta = await fetch(urlVentasTSV);
+        
+        // 🛡️ ESCUDO 1: Validar si la respuesta HTTP es realmente exitosa (Código 200-299)
+        if (!respuesta.ok) {
+            throw new Error(`Error en el servidor de Google Sheets (Status: ${respuesta.status})`);
+        }
+
+        const textoVentas = await respuesta.text();
+        
+        // 🛡️ ESCUDO 2: Validar si la respuesta es una página de error de Google en vez del TSV real
+        if (textoVentas.includes("<!DOCTYPE html>") || textoVentas.includes("Error")) {
+            throw new Error("La respuesta recibida es una página HTML de error, no un archivo de datos TSV.");
+        }
+
+        const filasVentas = textoVentas.split(/\r?\n/).filter(f => f.trim() !== "");
+        
+        // Mapeamos y guardamos los IDs numéricos puros en la variable global
+        const idsProcesados = filasVentas.slice(1).map(fila => {
+            const columnas = fila.split("\t");
+            
+            const idEncontrado = columnas[13];
+            const estadoEncontrado = columnas[14];
+
+            // Normalizamos el estado de la hoja de ventas
+            const estadoLimpio = estadoEncontrado ? estadoEncontrado.trim().toUpperCase() : "";
+
+            if (idEncontrado && estadoLimpio === "FINALIZADO") {
+                // Extrae solo los números del ID (Elimina letras como "id-")
+                return String(idEncontrado).replace(/\D/g, '').trim().substring(0, 11);
+            }
+            
+            return "";
+        }).filter(id => id !== "");
+
+        // 🛡️ ASIGNACIÓN ATÓMICA: Solo alteramos la variable global si el proceso fue 100% exitoso
+        idsPedidosVendidosInicio = idsProcesados;
+        console.log(`✅ Historial sincronizado exitosamente: ${idsPedidosVendidosInicio.length} pedidos archivados.`);
+
+    } catch (e) {
+        // En caso de caída de red, la variable 'idsPedidosVendidosInicio' conserva de forma segura 
+        // lo que tuviese cargado previamente en memoria sin romperse.
+        console.error("❌ No se pudo precargar el historial de ventas por problemas de conexión:", e.message);
+    }
+}
+
+async function cargarHistorialVentasInicial27jun26() {
+    try {
+        console.log("📥 Cargando historial de Ventas para filtro continuo...");
+        const urlVentasTSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAifMs_lFEZSqP-RkeHjLZ_dvp7SGfL55PdM18bviZ0QbYLozodJrAWi5IuoOSpeqMrgvR5oQkKU1d/pub?gid=119666070&single=true&output=tsv';
+        
+        const respuesta = await fetch(urlVentasTSV);
+        
+        // 🛡️ ESCUDO 1: Validar si la respuesta HTTP es realmente exitosa (Código 200-299)
+        if (!respuesta.ok) {
+            throw new Error(`Error en el servidor de Google Sheets (Status: ${respuesta.status})`);
+        }
+
+        const textoVentas = await respuesta.text();
+        
+        // 🛡️ ESCUDO 2: Validar si la respuesta es una página de error de Google en vez del TSV real
+        if (textoVentas.includes("<!DOCTYPE html>") || textoVentas.includes("Error")) {
+            throw new Error("La respuesta recibida es una página HTML de error, no un archivo de datos TSV.");
+        }
+
+        const filasVentas = textoVentas.split(/\r?\n/).filter(f => f.trim() !== "");
+        
+        // Mapeamos y guardamos los IDs numéricos puros en la variable global
+        const idsProcesados = filasVentas.slice(1).map(fila => {
+            const columnas = fila.split("\t");
+            
+            const idEncontrado = columnas[13];
+            const estadoEncontrado = columnas[14];
+
+            // Normalizamos el estado de la hoja de ventas
+            const estadoLimpio = estadoEncontrado ? estadoEncontrado.trim().toUpperCase() : "";
+
+            if (idEncontrado && estadoLimpio === "FINALIZADO") {
+                // Extrae solo los números del ID
+                return String(idEncontrado).replace(/\D/g, '').trim().substring(0, 11);
+            }
+            
+            return "";
+        }).filter(id => id !== "");
+
+        // 🛡️ ASIGNACIÓN ATÓMICA: Solo alteramos la variable global si el proceso fue 100% exitoso
+        idsPedidosVendidosInicio = idsProcesados;
+        console.log(`✅ Historial sincronizado exitosamente: ${idsPedidosVendidosInicio.length} pedidos archivados.`);
+
+    } catch (e) {
+        // En caso de caída de red, la variable 'idsPedidosVendidosInicio' conserva de forma segura 
+        // lo que tuviese cargado previamente en memoria sin romperse.
+        console.error("❌ No se pudo precargar el historial de ventas por problemas de conexión:", e.message);
+    }
+}
+
+async function cargarHistorialVentasInicial7() {
+    try {
+        console.log("📥 Cargando historial de Ventas para filtro continuo...");
+        const urlVentasTSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAifMs_lFEZSqP-RkeHjLZ_dvp7SGfL55PdM18bviZ0QbYLozodJrAWi5IuoOSpeqMrgvR5oQkKU1d/pub?gid=119666070&single=true&output=tsv';
+        
+        const respuesta = await fetch(urlVentasTSV);
+        const textoVentas = await respuesta.text();
+        const filasVentas = textoVentas.split(/\r?\n/).filter(f => f.trim() !== "");
+        
+        // Mapeamos y guardamos los IDs numéricos puros en la variable global
+        idsPedidosVendidosInicio = filasVentas.slice(1).map(fila => {
+            const columnas = fila.split("\t");
+            
+            const idEncontrado = columnas[13];
+            const estadoEncontrado = columnas[14];
+
+            // Normalizamos el estado de la hoja de ventas para evitar fallas de mayúsculas/minúsculas
+            const estadoLimpio = estadoEncontrado ? estadoEncontrado.trim().toUpperCase() : "";
+
+            if (idEncontrado && estadoLimpio === "FINALIZADO") {
+                // 🌟 CORRECCIÓN CRÍTICA: Extrae solo los números del ID para que coincida con el mapa del POS
+                return String(idEncontrado).replace(/\D/g, '').trim().substring(0, 11);
+            }
+            
+            return "";
+        }).filter(id => id !== "");
+
+        console.log(`✅ Historial sincronizado: ${idsPedidosVendidosInicio.length} pedidos archivados.`);
+
+    } catch (e) {
+        console.error("❌ No se pudo precargar el historial de ventas:", e);
+    }
+}
+
+async function cargarHistorialVentasInicial0() {
+    try {
+        console.log("📥 Cargando historial de Ventas para filtro inicial...");
+        const urlVentasTSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAifMs_lFEZSqP-RkeHjLZ_dvp7SGfL55PdM18bviZ0QbYLozodJrAWi5IuoOSpeqMrgvR5oQkKU1d/pub?gid=119666070&single=true&output=tsv';
+        
+        const respuesta = await fetch(urlVentasTSV);
+        const textoVentas = await respuesta.text();
+        const filasVentas = textoVentas.split(/\r?\n/).filter(f => f.trim() !== "");
+        
+        // Mapeamos y guardamos los IDs en nuestra variable global
+        idsPedidosVendidosInicio = filasVentas.slice(1).map(fila => {
+            const columnas = fila.split("\t");
+            
+            // Asumiendo la estructura:
+            // ... [13] Pedido (ID)
+            // ... [14] Estado
+            const idEncontrado = columnas[13];
+            const estadoEncontrado = columnas[14];
+
+            // Verificamos que el ID exista y que el estado sea "FINALIZADO"
+            if (idEncontrado && idEncontrado.trim().startsWith("id-") && estadoEncontrado && estadoEncontrado.trim() === "FINALIZADO") {
+                return idEncontrado.trim();
+            }
+            
+            return "";
+        }).filter(id => id !== "");
+
+            } catch (e) {
+        console.error("❌ No se pudo precargar el historial de ventas:", e);
+    }
+}
+async function cargarPedidosPOS() {
+    if (sincronizacionEnCurso) return;
+    sincronizacionEnCurso = true;
+
+    try {
+        // 🚀 ESCUDO 1: Destruir el caché de Google Sheets añadiendo la hora exacta al enlace
+        // Esto obliga a Google a darte el estado real en vez de datos de hace 5 minutos.
+        const urlRompeCache = `${urlPedidosTSV}&_cb=${Date.now()}`;
+        
+        const respuesta = await fetch(urlRompeCache);
+        if (!respuesta.ok) return;
+
+        const textoCrudo = await respuesta.text();
+        
+        // Validación de seguridad contra HTML de error de Google
+        if (!textoCrudo || textoCrudo.includes("<html") || textoCrudo.includes("<!DOCTYPE")) return;
+
+        const filas = textoCrudo.split(/\r?\n/).filter(f => f.trim() !== "");
+
+        // 1. Declarar la variable accesible en todo el método
+        let pedidosProcesados = [];
+        
+        if (filas.length <= 1) {
+            console.log("☁️ Nube vacía o sin datos. POS mantiene autonomía.");
+        }
+        else {
+            // 2. EXTRAER
+            const datosCrudos = filas.slice(1).map(filaTexto => {
+                const columnas = filaTexto.replace(/\\t/g, "\t").split("\t");
+                return {
+                    idGrupo: columnas[0]?.replace(/['"\s]/g, '').trim(),
+                    jsonRaw: columnas[1]?.trim(),
+                    pagadoStr: columnas[2]?.trim(),
+                    estado: columnas[5]?.trim() || "PENDIENTE"
+                };
+            }).filter(p => p.idGrupo && p.idGrupo !== "undefined" && !p.idGrupo.includes("#ERROR!"));
+
+            // 3. RECONSTRUIR
+            pedidosProcesados = datosCrudos.map(p => {
+                try {
+                    const jsonLimpio = p.jsonRaw.replace(/^['"]|['"]$/g, '');
+                    const data = JSON.parse(jsonLimpio);
+                    return {
+                        ...data,
+                        idGrupo: p.idGrupo,
+                        pagado: ["TRUE", "SI", "PAGADO"].includes(p.pagadoStr.toUpperCase()),
+                        estado: p.estado
+                    };
+                } catch (e) { return null; }
+            }).filter(p => p !== null);
+        }
+
+        // 🛡️ EL "ARRANQUE EN FRÍO" CORREGIDO: 
+        // Si no hay nada en memoria y la nube está vacía, forzamos la inicialización 
+        // pasándole el arreglo vacío para que limpie la interfaz y renderice correctamente.
+        if (pedidosEnEspera.length === 0 && filas.length <= 1) {
+            console.log("🚀 Arranque en frío: Adoptando estado completo de la nube (Limpio).");
+            actualizarYPersistirPedidos([]); 
+            return; // Ahora sí salimos de forma segura porque la pantalla ya se dibujó vacía
+        }
+              
+        // En cualquier otro caso, procesamos la mezcla normal de datos
+        actualizarYPersistirPedidos(pedidosProcesados);
+
+    } catch (err) {
+        console.error("❌ Error en sincronización:", err);
+    } finally {
+        sincronizacionEnCurso = false;
+    }
+}
+
+const urlPedidosTSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAifMs_lFEZSqP-RkeHjLZ_dvp7SGfL55PdM18bviZ0QbYLozodJrAWi5IuoOSpeqMrgvR5oQkKU1d/pub?gid=247861871&single=true&output=tsv';
+async function cargarPedidosPOS27jun() {
+    if (sincronizacionEnCurso) return;
+    sincronizacionEnCurso = true;
+
+    try {
+        const respuesta = await fetch(urlPedidosTSV);
+        if (!respuesta.ok) return;
+
+        const textoCrudo = await respuesta.text();
+        // Validación de seguridad contra HTML de error de Google
+        if (!textoCrudo || textoCrudo.includes("<html")) return;
+
+        const filas = textoCrudo.split(/\r?\n/).filter(f => f.trim() !== "");
+
+        // 🛡️ PARADIGMA: Si la nube está vacía (o solo tiene cabecera), NO HACEMOS NADA.
+        // 1. Declarar la variable fuera con let para que sea accesible en todo el método
+        let pedidosProcesados = [];
+        if (filas.length <= 1) {
+            console.log("☁️ Nube vacía o sin datos. POS mantiene autonomía.");
+            //return; 
+        }
+        else {
+        // 1. EXTRAER
+            const datosCrudos = filas.slice(1).map(filaTexto => {
+                const columnas = filaTexto.replace(/\\t/g, "\t").split("\t");
+                return {
+                    idGrupo: columnas[0]?.replace(/['"\s]/g, '').trim(),
+                    jsonRaw: columnas[1]?.trim(),
+                    pagadoStr: columnas[2]?.trim(),
+                    estado: columnas[5]?.trim() || "PENDIENTE"
+                };
+            }).filter(p => p.idGrupo && p.idGrupo !== "undefined" && !p.idGrupo.includes("#ERROR!"));
+
+            // 2. RECONSTRUIR
+            pedidosProcesados = datosCrudos.map(p => {
+                try {
+                    const jsonLimpio = p.jsonRaw.replace(/^['"]|['"]$/g, '');
+                    const data = JSON.parse(jsonLimpio);
+                    return {
+                        ...data,
+                        idGrupo: p.idGrupo,
+                        pagado: ["TRUE", "SI", "PAGADO"].includes(p.pagadoStr.toUpperCase()),
+                        estado: p.estado
+                    };
+                } catch (e) { return null; }
+            }).filter(p => p !== null);
+        }
+        // 🛡️ EL "ARRANQUE EN FRÍO": 
+        // Si no tenemos NADA en memoria, adoptamos la nube inmediatamente.
+        if (pedidosEnEspera.length === 0 && filas.length <= 1) {
+            console.log("🚀 Arranque en frío: Adoptando estado completo de la nube.");
+            return;
+        }
+              
+        actualizarYPersistirPedidos(pedidosProcesados);
+        
+
+    } catch (err) {
+        console.error("❌ Error en sincronización:", err);
+    } finally {
+        sincronizacionEnCurso = false;
+    }
+}
+
+
+function procesarPedidosConEscudo(pedidosNube, pedidosEnEspera) {
+    // 1. Aplicas tu lógica de idGrupo vs idsPedidosVendidosInicio
+    // 2. Aplicas tu lógica de escudo (control_estados_terminales)
+    // 3. Aplicas tu lógica de "retención" (Escudo Anti-intermitencia)
+    
+    // ... todo tu código de filtrado y cruces va aquí ...
+    // 3. CRUCES CON EL ESCUDO DE LOCAL STORAGE
+        let controlEstados = JSON.parse(localStorage.getItem('control_estados_terminales')) || [];
+        let huboCambios = false;
+
+        let pedidosProcesados = pedidosNube.map(pedido => {
+            const idLimpio = pedido.idGrupo.replace(/\D/g, '').trim().substring(0, 8);
+            const estaEnVentas = idsPedidosVendidosDinamico.some(idVendido => 
+                idVendido.replace(/\D/g, '').trim().substring(0, 8) === idLimpio
+            );
+
+            if (estaEnVentas) {
+                pedido.estado = "FINALIZADO";
+                pedido.pagado = true;
+                
+                let escudo = controlEstados.find(e => e.idGrupo === pedido.idGrupo);
+                if (escudo) {
+                    if (escudo.estadoCocina !== "FINALIZADO") {
+                        escudo.estadoCocina = "FINALIZADO";
+                        escudo.estadoPagado = "PAGADO";
+                        huboCambios = true;
+                    }
+                } else {
+                    controlEstados.push({
+                        idGrupo: pedido.idGrupo,
+                        Nombre: pedido.cliente || "Cliente",
+                        estadoCocina: "FINALIZADO",
+                        estadoPagado: "PAGADO"
+                    });
+                    huboCambios = true;
+                }
+            } else {
+                let escudo = controlEstados.find(e => e.idGrupo === pedido.idGrupo);
+                if (escudo) {
+                    if (escudo.estadoPagado === "PAGADO") pedido.pagado = true;
+                    if (escudo.estadoCocina === "FINALIZADO") pedido.estado = "FINALIZADO";
+                } else {
+                    controlEstados.push({
+                        idGrupo: pedido.idGrupo,
+                        Nombre: pedido.cliente || "Cliente",
+                        estadoCocina: pedido.estado === "FINALIZADO" ? "FINALIZADO" : "PROCESANDO",
+                        estadoPagado: pedido.pagado ? "PAGADO" : "PENDIENTE"
+                    });
+                    huboCambios = true;
+                }
+            }
+            return pedido;
+        });
+
+        if (huboCambios) {
+            localStorage.setItem('control_estados_terminales', JSON.stringify(controlEstados));
+        }
+
+                // =========================================================================
+        // 🛡️ UNICO ESCUDO ANTI-INTERMITENCIA (REPARADO: Protege listos no pagados)
+        // =========================================================================
+        if (typeof pedidosEnEspera !== 'undefined' && pedidosEnEspera.length > 0) {
+            pedidosEnEspera.forEach(pedidoLocal => {
+                const existeEnNube = pedidosProcesados.some(p => p.idGrupo === pedidoLocal.idGrupo);
+                
+                // Si el pedido no viene en el fetch de la nube por lag de red...
+                if (!existeEnNube) {
+                    const yaEstaDespachadoYPagado = (pedidoLocal.estado === "FINALIZADO" && pedidoLocal.pagado === true);
+                    
+                    // ¡SOLO lo dejamos morir si YA está cobrado y entregado! 
+                    // Si está listo pero NO pagado (como PRUEBA u OTRO), lo RETENEMOS a la fuerza
+                    if (!yaEstaDespachadoYPagado) {
+                        console.warn(`🛡️ Escudo protector: Reteniendo pedido pendiente de pago en POS: ${pedidoLocal.idGrupo}`);
+                        pedidosProcesados.push(pedidoLocal);
+                    }
+                }
+            });
+        }
+
+               // =========================================================================
+        // 🔥 EL FILTRO DE EVACUACIÓN (REPARADO: Mantiene listos+pagados en pantalla)
+        // =========================================================================
+        pedidosProcesados = pedidosProcesados.filter(pedido => {
+            const idLimpio = pedido.idGrupo.replace(/\D/g, '').trim().substring(0, 8);
+            
+            // 1. Verificación temporal contra Ventas (Últimas 12 horas)
+            const timestampPedido = parseInt(pedido.idGrupo.replace('id-', '')) || 0;
+            const esPedidoVigente = (Date.now() - timestampPedido) < (12 * 60 * 60 * 1000);
+
+            // 2. Si ya fue archivado definitivamente y eliminado por recuperarPedido en este turno, lo borramos
+            const yaFueDespachadoYBorrado = esPedidoVigente && !controlEstados.some(escudo => escudo.idGrupo === pedido.idGrupo);
+            if (yaFueDespachadoYBorrado) {
+                return false; 
+            }
+
+            // 3. 🛡️ REGLA DE RETENCIÓN POS: 
+            // Aunque esté listo y pagado, se mantiene visible para el despacho manual centralizado
+            return true; 
+        });
+
+        // =========================================================================
+        // 🧹 LIMPIEZA AUTOMÁTICA DEL LOCALSTORAGE COHERENTE
+        // =========================================================================
+        controlEstados = controlEstados.filter(escudo => {
+            const existeEnNube = pedidosNube.some(p => p.idGrupo === escudo.idGrupo);
+            
+            // Si el ID ya figura en tus ventas del día, limpiamos su candado de memoria local ya mismo
+            const idLimpioEscudo = escudo.idGrupo.replace(/\D/g, '').trim().substring(0, 8);
+            const yaSeVendio = idsPedidosVendidosDinamico.some(idVendido => 
+                idVendido.replace(/\D/g, '').trim().substring(0, 8) === idLimpioEscudo
+            );
+            if (yaSeVendio) return false;
+
+            const despachadoLocal = (escudo.estadoCocina === "FINALIZADO" && escudo.estadoPagado === "PAGADO");
+            if (despachadoLocal && existeEnNube) return true; 
+            
+            return existeEnNube; 
+        });
+        localStorage.setItem('control_estados_terminales', JSON.stringify(controlEstados));
+    
+    return pedidosProcesados; // El resultado final, listo para la función de persistencia
+}
+async function cargarPedidosPOSz() {
+    if (sincronizacionEnCurso) {
+        console.log("⏳ Sincronización aún en curso...");
+        return;
+    }
+
+    sincronizacionEnCurso = true;
+    console.log("🚀 Inicio sincronización", new Date().toLocaleTimeString());
+
+    try {
+        const urlPedidosTSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAifMs_lFEZSqP-RkeHjLZ_dvp7SGfL55PdM18bviZ0QbYLozodJrAWi5IuoOSpeqMrgvR5oQkKU1d/pub?gid=247861871&single=true&output=tsv';
+        
+        const respuesta = await fetch(urlPedidosTSV);
+        const textoCrudo = await respuesta.text();
+        const filas = textoCrudo.split(/\r?\n/).filter(f => f.trim() !== "");
+
+        // 1. CONTROL DE INTEGRIDAD CONTRA HOJAS VACÍAS
+        if (filas.length <= 1) {
+            if (typeof pedidosEnEspera !== 'undefined' && pedidosEnEspera.length > 0) { // MEMORIA TIENE DATOS
+                console.warn("⚠️ Google Sheets devolvió una hoja vacía/incompleta. Conservando datos actuales.");
+                
+                // ✅ Única llamada real y necesaria
+                if (typeof renderTickets === 'function') {
+                    renderTickets();
+                }
+                return; 
+            }
+            
+            actualizarYPersistirPedidos ([]); 
+            ultimoHash = ""; 
+            
+            // ✅ Única llamada real y necesaria para limpiar la pantalla
+            if (typeof renderTickets === 'function') {
+                renderTickets();
+            }
+            return;
+        }
+
+        // 2. ESTRATEGIA DE HASH REFRACTORIZADA 
+        const hash = JSON.stringify(filas);
+        if (hash === ultimoHash) {
+            console.log("ℹ️ Datos idénticos en la nube. Solo refrescando interfaz visual por estabilidad.");
+            if (typeof renderTickets === 'function') renderTickets();
+            return; // Salida segura, la UI se garantiza pintada
+        } 
+        ultimoHash = hash;
+
+                // Mapeo estructurado y blindado desde TSV contra fallos de Google Sheets
+        const pedidosNube = filas.slice(1).map(filaTexto => {
+            const filaLimpia = filaTexto.replace(/\\t/g, "\t").replace(/\\n/g, "\n");
+            const columnas = filaLimpia.split("\t");
+            
+            const idGrupo = columnas[0]?.replace(/['"\s]/g, '').trim() || "";   
+            const posJSONCrudo = columnas[1]?.trim() || ""; 
+            const pagadoStr = columnas[2]?.trim() || "";  
+            const estadoGlobal = columnas[5]?.trim() || "";  
+
+            // 🛡️ ESCUDO CRÍTICO: Si la celda viene rota con un error de fórmula de Google Sheets, 
+            // abortamos este mapeo específico devolviendo un objeto inválido
+            if (posJSONCrudo.includes("#ERROR!") || idGrupo.includes("#ERROR!")) {
+                console.warn("⚠️ [Mapeador] Detectada celda rota #ERROR! en Google Sheets. Ignorando fila corrupta.");
+                return { idGrupo: null }; 
+            }
+
+            let pedidoObjeto = {};
+            if (posJSONCrudo && posJSONCrudo !== "N/A") {
+                try { 
+                    const jsonLimpio = posJSONCrudo.replace(/^['"]|['"]$/g, '');
+                    pedidoObjeto = JSON.parse(jsonLimpio); 
+                } 
+                catch (e) { 
+                    pedidoObjeto = {}; 
+                }
+            }
+
+            pedidoObjeto.idGrupo = idGrupo;
+            const pagadoLimpio = pagadoStr.toUpperCase();
+            pedidoObjeto.pagado = (pagadoLimpio === "TRUE" || pagadoLimpio === "SI" || pagadoLimpio === "PAGADO");
+            console.warn("⚠️ entrada estadoGlobal ",estadoGlobal);
+
+            pedidoObjeto.estado = estadoGlobal || "PENDIENTE";
+            if (!pedidoObjeto.items) pedidoObjeto.items = [];
+            
+            return pedidoObjeto;
+        }).filter(p => p.idGrupo && p.idGrupo !== "undefined" && p.idGrupo !== null); // ◄ Filtramos los rotos
+
+
+        // 3. CRUCES CON EL ESCUDO DE LOCAL STORAGE
+        let controlEstados = JSON.parse(localStorage.getItem('control_estados_terminales')) || [];
+        let huboCambios = false;
+
+        let pedidosProcesados = pedidosNube.map(pedido => {
+            const idLimpio = pedido.idGrupo.replace(/\D/g, '').trim().substring(0, 8);
+            const estaEnVentas = idsPedidosVendidosDinamico.some(idVendido => 
+                idVendido.replace(/\D/g, '').trim().substring(0, 8) === idLimpio
+            );
+
+            if (estaEnVentas) {
+                pedido.estado = "FINALIZADO";
+                pedido.pagado = true;
+                
+                let escudo = controlEstados.find(e => e.idGrupo === pedido.idGrupo);
+                if (escudo) {
+                    if (escudo.estadoCocina !== "FINALIZADO") {
+                        escudo.estadoCocina = "FINALIZADO";
+                        escudo.estadoPagado = "PAGADO";
+                        huboCambios = true;
+                    }
+                } else {
+                    controlEstados.push({
+                        idGrupo: pedido.idGrupo,
+                        Nombre: pedido.cliente || "Cliente",
+                        estadoCocina: "FINALIZADO",
+                        estadoPagado: "PAGADO"
+                    });
+                    huboCambios = true;
+                }
+            } else {
+                let escudo = controlEstados.find(e => e.idGrupo === pedido.idGrupo);
+                if (escudo) {
+                    if (escudo.estadoPagado === "PAGADO") pedido.pagado = true;
+                    if (escudo.estadoCocina === "FINALIZADO") pedido.estado = "FINALIZADO";
+                } else {
+                    controlEstados.push({
+                        idGrupo: pedido.idGrupo,
+                        Nombre: pedido.cliente || "Cliente",
+                        estadoCocina: pedido.estado === "FINALIZADO" ? "FINALIZADO" : "PROCESANDO",
+                        estadoPagado: pedido.pagado ? "PAGADO" : "PENDIENTE"
+                    });
+                    huboCambios = true;
+                }
+            }
+            return pedido;
+        });
+
+        if (huboCambios) {
+            localStorage.setItem('control_estados_terminales', JSON.stringify(controlEstados));
+        }
+
+                // =========================================================================
+        // 🛡️ UNICO ESCUDO ANTI-INTERMITENCIA (REPARADO: Protege listos no pagados)
+        // =========================================================================
+        if (typeof pedidosEnEspera !== 'undefined' && pedidosEnEspera.length > 0) {
+            pedidosEnEspera.forEach(pedidoLocal => {
+                const existeEnNube = pedidosProcesados.some(p => p.idGrupo === pedidoLocal.idGrupo);
+                
+                // Si el pedido no viene en el fetch de la nube por lag de red...
+                if (!existeEnNube) {
+                    const yaEstaDespachadoYPagado = (pedidoLocal.estado === "FINALIZADO" && pedidoLocal.pagado === true);
+                    
+                    // ¡SOLO lo dejamos morir si YA está cobrado y entregado! 
+                    // Si está listo pero NO pagado (como PRUEBA u OTRO), lo RETENEMOS a la fuerza
+                    if (!yaEstaDespachadoYPagado) {
+                        console.warn(`🛡️ Escudo protector: Reteniendo pedido pendiente de pago en POS: ${pedidoLocal.idGrupo}`);
+                        pedidosProcesados.push(pedidoLocal);
+                    }
+                }
+            });
+        }
+
+               // =========================================================================
+        // 🔥 EL FILTRO DE EVACUACIÓN (REPARADO: Mantiene listos+pagados en pantalla)
+        // =========================================================================
+        pedidosProcesados = pedidosProcesados.filter(pedido => {
+            const idLimpio = pedido.idGrupo.replace(/\D/g, '').trim().substring(0, 8);
+            
+            // 1. Verificación temporal contra Ventas (Últimas 12 horas)
+            const timestampPedido = parseInt(pedido.idGrupo.replace('id-', '')) || 0;
+            const esPedidoVigente = (Date.now() - timestampPedido) < (12 * 60 * 60 * 1000);
+
+            // 2. Si ya fue archivado definitivamente y eliminado por recuperarPedido en este turno, lo borramos
+            const yaFueDespachadoYBorrado = esPedidoVigente && !controlEstados.some(escudo => escudo.idGrupo === pedido.idGrupo);
+            if (yaFueDespachadoYBorrado) {
+                return false; 
+            }
+
+            // 3. 🛡️ REGLA DE RETENCIÓN POS: 
+            // Aunque esté listo y pagado, se mantiene visible para el despacho manual centralizado
+            return true; 
+        });
+
+        // =========================================================================
+        // 🧹 LIMPIEZA AUTOMÁTICA DEL LOCALSTORAGE COHERENTE
+        // =========================================================================
+        controlEstados = controlEstados.filter(escudo => {
+            const existeEnNube = pedidosNube.some(p => p.idGrupo === escudo.idGrupo);
+            
+            // Si el ID ya figura en tus ventas del día, limpiamos su candado de memoria local ya mismo
+            const idLimpioEscudo = escudo.idGrupo.replace(/\D/g, '').trim().substring(0, 8);
+            const yaSeVendio = idsPedidosVendidosDinamico.some(idVendido => 
+                idVendido.replace(/\D/g, '').trim().substring(0, 8) === idLimpioEscudo
+            );
+            if (yaSeVendio) return false;
+
+            const despachadoLocal = (escudo.estadoCocina === "FINALIZADO" && escudo.estadoPagado === "PAGADO");
+            if (despachadoLocal && existeEnNube) return true; 
+            
+            return existeEnNube; 
+        });
+        localStorage.setItem('control_estados_terminales', JSON.stringify(controlEstados));
+
+        // 🔥 7. ACTUALIZACIÓN DE MEMORIA GLOBAL DE FORMA SEGURA
+        actualizarYPersistirPedidos (pedidosProcesados);        
+        console.log("📌 pedidosEnEspera Sincronizados y Blindados: ", pedidosEnEspera);
+
+        // 🔥 DIBUJAR INTERFAZ UNIFICADA
+        if (typeof renderTickets === 'function') {
+            renderTickets(); 
+        } else {
+            console.error("⚠️ Alerta: La función 'renderTickets' no está disponible en este scope.");
+        }
+
+    } catch (err) {
+        console.error("❌ Error de red o procesamiento en bucle:", err);
+    } finally {
+        sincronizacionEnCurso = false;
+        console.log("🏁 Sincronización terminada", new Date().toLocaleTimeString());
+    }
+} // ◄ Cierre final perfecto de cargarPedidosPOS
+
+
+
+function fusionarNubeConEstadoLocal(pedidosNube) {
+  
+  // 1. Cargamos el almacenamiento local unificado
+  const pedidosLocales = JSON.parse(localStorage.getItem("pedidosEnEspera")) || [];
+
+  let pedidosFusionados = pedidosNube.map(itemNube => {
+    const localEncontrado = pedidosLocales.find(itemLocal => itemLocal.idGrupo === itemNube.idGrupo);
+    
+   // console.log("fusionar hora", new Date().toLocaleTimeString());
+//console.log("pedidosNube ", pedidosNube);
+//console.log("pedidosLocales ",pedidosLocales);
+    const totalLimpio = Number(itemNube.total) || 0;
+    const estadoNube = itemNube.estado || itemNube["estado"] || "PENDIENTE";
+    
+    // Convertir de forma segura el valor de la nube a Booleano puro
+    const pagadoNube = itemNube.pagado === true || 
+                       String(itemNube.pagado).toUpperCase() === 'TRUE' || 
+                       String(itemNube.pagado).toUpperCase() === 'SI';
+
+    // Recuperar los productos/items de forma segura desde posJSON de la nube
+    let itemsNube = [];
+    try {
+      if (typeof itemNube.posJSON === 'string') {
+        const parsed = JSON.parse(itemNube.posJSON);
+        itemsNube = parsed.items || parsed.pedido?.items || [];
+      } else if (itemNube.pedido?.items) {
+        itemsNube = itemNube.pedido.items;
+      } else if (itemNube.items) {
+        itemsNube = itemNube.items;
+      }
+    } catch(e) {
+      console.error("Error parseando posJSON de la nube", e);
+    }
+
+    if (localEncontrado) {
+      // 🌟 CORRECCIÓN CRÍTICA: Si la nube ya dice que está PAGADO (true), manda la nube.
+      // Si la nube dice false, respetamos el valor local (por si el cajero lo marcó en caliente en otra pantalla).
+      
+      const pagadoFinal = pagadoNube === true ? true : (localEncontrado.pagado ?? pagadoNube);
+      
+      // 🌟 CORRECCIÓN DE ESTADO: Si la nube dice que está FINALIZADO o EN PROCESO, 
+      // manda la nube para que la cocina mueva el flujo.
+      const estadoFinal = itemNube.estado || localEncontrado.estado || "PENDIENTE";
+      
+      // Rescatamos los ítems del local (si existen) o de la nube en su defecto
+      const itemsFinales = localEncontrado.items || localEncontrado.pedido?.items || itemsNube;
+
+      return {
+        idGrupo: itemNube.idGrupo,
+        cliente: itemNube.cliente || localEncontrado.cliente || "Sin Nombre",
+        origen: "LOCAL_MODIFICADO", // Mantiene el rastreo
+        pagado: pagadoFinal,        // <--- Ahora sí lee el TRUE de la hoja
+        total: totalLimpio || localEncontrado.total || 0,
+        estado: estadoFinal,        // <--- Adopta el FINALIZADO de la hoja
+        tipoPago: itemNube.tipoPago || localEncontrado.tipoPago || "",
+        timestamp: itemNube.timestamp || localEncontrado.timestamp || Date.now(),
+        ajusteGlobal: itemNube.ajusteGlobal || localEncontrado.ajusteGlobal || 0,
+        items: itemsFinales 
+      };
+    }
+
+    // Si el pedido viene directo y limpio de la nube (no está en local)
+    return {
+      idGrupo: itemNube.idGrupo,
+      cliente: itemNube.cliente || "Sin Nombre",
+      origen: "NUBE",
+      pagado: pagadoNube,
+      total: totalLimpio,
+      estado: estadoNube,
+      tipoPago: itemNube.tipoPago || "",
+      timestamp: itemNube.timestamp || Date.now(),
+      ajusteGlobal: itemNube.ajusteGlobal || 0,
+      items: itemsNube // <--- EXTRACTO DIRECTO DE ÍTEMS EN LA RAÍZ
+    };
+  });
+
+  // 2. Conservar pedidos locales completamente nuevos (que no existen en la nube aún)
+  pedidosLocales.forEach(local => {
+    const existeEnNube = pedidosNube.some(itemNube => itemNube.idGrupo === local.idGrupo);
+    
+    if (!existeEnNube) {
+        console.warn(
+        "REINSERTANDO DESDE RAM",
+        local.idGrupo,
+        local.estado,
+        local.pagado
+    );
+      // Nos aseguramos de que el pedido nuevo local también guarde sus ítems en la raíz si venía viejo
+      const itemsLocalesPuros = local.items || local.pedido?.items || [];
+      
+      // Eliminamos la propiedad residual ".pedido" para sanear el registro de localStorage
+      const { pedido, ...restoLectorLocal } = local;
+
+      pedidosFusionados.unshift({
+        ...restoLectorLocal,
+        origen: "LOCAL_NUEVO_PENDIENTE",
+        items: itemsLocalesPuros
+      });
+    }
+  });
+      
+  
+  // 3. Sobrescribir y redibujar la pantalla con datos 100% homogéneos
+  pedidosEnEspera = pedidosFusionados;
+  localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
+  renderTickets(); 
+}
+// Aqui comienzo
+async function actualizarEstadoEnVentas(idGrupo, nuevoEstado) {
+    console.log(`🔄 Solicitando actualización de estado a ${nuevoEstado} para: ${idGrupo}`);
+    
+    try {
+        const response = await fetch(URL_API, {
+            method: "POST",
+            mode: "cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({
+                accion: "ACTUALIZAR_ESTADO", // Nueva acción para tu backend
+                payload: {
+                    idGrupo: idGrupo,
+                    estado: nuevoEstado.trim().toUpperCase()
+                }
+            })
+        });
+
+        const data = await response.json();
+        if (data.ok) {
+            console.log("✅ Estado actualizado correctamente en hoja Ventas");
+        } else {
+            console.error("❌ Error al actualizar estado:", data.error);
+        }
+    } catch (error) {
+        console.error("❌ Fallo de red al actualizar estado:", error);
+    }
+}
+async function registrarVentaFinal() {
+    // --- 1. CAPTURA DE DATOS INICIAL ---
+    const clienteNombre = document.getElementById('input-cliente')?.value || "CLIENTE";
+    const origenSeleccionado = document.querySelector('input[name="origen-pedido"]:checked')?.value || "PRESENCIAL";
+    const totalTexto = document.getElementById('total-bolsa')?.innerText || "0";
+    const totalLimpio = parseFloat(totalTexto.replace(/[^0-9.-]+/g, "")) || 0;
+    const ajusteGlobal = parseFloat(document.getElementById('ajuste-global')?.value) || 0;
+
+    // --- 2. VALIDACIÓN DE COMIENZO ---
+    if (!pedidoActivo || !pedidoActivo.items || pedidoActivo.items.length === 0) {
+        Swal.fire("Bolsa Vacía", "No hay productos para cobrar.", "error");
+        return;
+    }
+
+    // --- 3. ESCUDO ANTI-RETROCESO ---
+    bloqueoSincronizacion = true;
+    clearTimeout(timeoutBloqueo);
+    timeoutBloqueo = setTimeout(() => {
+        bloqueoSincronizacion = false;
+    }, 5000);
+
+    // --- 4. ASEGURAR ID DE PEDIDO ---
+    if (!pedidoActivo.idGrupo) {
+        console.log("⚠️ Pago inmediato detectado. Generando ID vía enviarCocina...");
+        enviarCocina(false);
+    } else {
+        if (typeof cocina !== 'undefined') {
+            cocina.forEach(item => {
+                if (item.idGrupo === pedidoActivo.idGrupo) item.pagado = true;
+            });
+        }
+    }
+
+    const idPedidoActual = pedidoActivo.idGrupo;
+    const estadoCocina = (pedidoActivo.estado || "PENDIENTE").trim().toUpperCase();
+
+    // --- 5. MARCAR ESTADO LOCAL ---
+    pedidoActivo.pagado = true;
+    // pedidoActivo.estado = "FINALIZADO"; // Aseguramos que pase a FINALIZADO al cobrar
+    const index = pedidosEnEspera.findIndex(p => p.idGrupo === pedidoActivo.idGrupo);
+    if (index > -1) {
+    // 1. Marcamos el pago, que es un evento técnico concreto
+    pedidosEnEspera[index].pagado = true;
+    }
+    const pedidoLocal = pedidosEnEspera.find(p => p.idGrupo === idPedidoActual);
+    if (pedidoLocal) {
+        pedidoLocal.pagado = true;
+        localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
+        renderTickets();
+    }
+
+    // --- 6. FORMAR FILAS PARA ENVIAR ---
+    const filasParaEnviar = pedidoActivo.items.map((it, index) => {
+        const subtotalFila = (it.precio || 0) + (it.ajuste || 0);
+
+        return [
+            new Date().toLocaleString(),
+            clienteNombre,
+            it.nombre,
+            it.acompanamiento || "",
+            (it.salsas || []).toString(),
+            it.ajuste || 0,
+            it.nota || "",
+            origenSeleccionado,
+            tipoPago,
+            subtotalFila,
+            index === 0 ? ajusteGlobal : 0,
+            index === 0 ? totalLimpio : 0,
+            it.categoria || "General",
+            idPedidoActual,
+            pedidoActivo.estado // ⚡ CORREGIDO: Enviamos el nuevo estado "FINALIZADO" a la nube
+        ];
+    });
+
+    // --- 7. UI DE PROCESO ---
+    const btnRegistro = document.getElementById('btn-cobrar');
+    if (btnRegistro) {
+        btnRegistro.disabled = true;
+        btnRegistro.innerText = "⌛ PROCESANDO...";
+    }
+
+    const payloadMaestro = {
+        accion: "GRABAR_VENTA",
+        payload: {
+            listaPedidos: filasParaEnviar,
+            idGrupo: idPedidoActual,
+            estadoCocina: pedidoActivo.estado // ⚡ CORREGIDO: "FINALIZADO"
+        }
+    };
+
+    try {
+        const response = await fetch(URL_API, {
+            method: "POST",
+            mode: "cors",
+            redirect: "follow", // Permite seguir la redirección segura de Google
+            headers: { 
+                "Content-Type": "text/plain" // ⚡ CORREGIDO: Evita el bloqueo por OPTIONS (CORS)
+            },
+            body: JSON.stringify(payloadMaestro)
+        });
+
+        const responseText = await response.text();
+        console.log("Respuesta cruda:", responseText);
+
+        let dataJson;
+        try {
+            dataJson = JSON.parse(responseText);
+        } catch (parseError) {
+            throw new Error("El servidor respondió algo que no es JSON.");
+        }
+
+        // Si tu Apps Script retorna exitosamente el objeto de confirmación
+        if (dataJson.ok) {
+            console.log(`✅ Registro de venta exitoso en la nube para: ${idPedidoActual}`);
+            
+            // ⚡ DISPARO DE PURGA AUTOMÁTICA: Como ya está PAGADO + FINALIZADO en RAM y nube,
+            // esta función se encargará de borrarlo de la hoja de activos y limpiar el localStorage.
+            //  await recuperarPedido(idPedidoActual);
+            
+            // Si tenías funciones extras para cerrar modales o limpiar pantallas, ejecútalas aquí:
+            if (typeof manejarExitoVenta === 'function') {
+                manejarExitoVenta(pedidoActivo.estado, idPedidoActual);
+            }
+            return;
+        }
+
+        throw new Error(dataJson.error || "Error al procesar la venta.");
+    } catch (error) {
+        console.error("❌ Error en registrarVentaFinal:", error);
+
+        Swal.fire("Error", error.message || "No se pudo registrar la venta.", "error");
+
+        if (btnRegistro) {
+            btnRegistro.disabled = false;
+            btnRegistro.innerText = "💰 REGISTRAR VENTA";
+        }
+    } finally {
+        // OBLIGATORIO: Apagamos el escudo para que el POS vuelva a sincronizar normalmente
+        bloqueoSincronizacion = false; 
+    }
+}
+
+function manejarExitoVenta(estadoCocina, idParaGestionar) {
+    mostrarNotificacion("✅ Venta Guardada!");
+
+    const btnRegistro = document.getElementById('btn-cobrar');
+    if (btnRegistro) {
+        btnRegistro.disabled = false;
+        btnRegistro.innerText = "💰 REGISTRAR VENTA";
+    }
+
+    // Limpieza visual del mostrador
+    nuevoPedido();
+    tipoPago = "";
+
+    const inputAjuste = document.getElementById('ajuste-global');
+    if (inputAjuste) inputAjuste.value = 0;
+
+    renderBolsa();
+    renderTickets();
+
+    // IMPORTANTE:
+    // No llamar recuperarPedido aquí si quieres mantener control manual del cajero.
+    // Si el pedido ya quedó FINALIZADO + pagado, quedará visible hasta que el cajero lo cierre manualmente.
+}
+
+
+
+function rehabilitarBotonRegistro(btn) {
+    if (btn) {
+        btn.disabled = false;
+        btn.innerText = "💰 REGISTRAR VENTA (HOJA)";
+    }
+}
+
+
+      function mostrarNotificacion(mensaje) {
+          const aviso = document.getElementById('notificacion-exito');
+          if(!aviso) return;
+          aviso.innerText = mensaje;
+          aviso.style.display = 'block';
+          setTimeout(() => { aviso.style.display = 'none'; }, 3000);
+      }
+
+    function reproducirSonido() {
+    try {
+        const snd = new Audio();
+        snd.src = "https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3";
+        snd.load();
+        snd.play();
+    } catch (e) {
+        console.warn("Error audio:", e);
+    }
+    }
+    function renderPaymentButtons() {
+    const container = document.getElementById('payment-options-container');
+    if (!container) return; // Seguridad: Si no existe el div, no hace nada
+    
+    container.innerHTML = ""; 
+
+    opcionesPago.forEach(option => {
+        const btn = document.createElement('button');
+        btn.innerText = option;
+        btn.className = "btn-payment";
+        btn.type = "button";
+        btn.onclick = () => selectPaymentType(option);
+        container.appendChild(btn);
+    });
+}
+function seleccionar(btn) {
+  // quitar selección anterior
+  document.querySelectorAll('.btn-origen')
+    .forEach(b => b.classList.remove('btn-selected'));
+
+  // aplicar nueva selección
+  btn.classList.add('btn-selected');
+}
+function sincronizarVista() {
+  google.script.run
+    .withSuccessHandler(function(pedidosDesdeNube) {
+      // pedidosDesdeNube es el array de la función obtenerPedidosActivos()
+      actualizarInterfazSegunRol(pedidosDesdeNube);
+    })
+    .obtenerPedidosActivos();
+}
+function actualizarInterfazSegunRol(pedidos) {
+    // Si estoy en KDS:
+    // Filtrar los que no sean "ENTREGADO" y renderKDS(pedidos)
+    
+    // Si estoy en MONITOR:
+    // Renderizar lista de nombres y su estado (Preparando / Listo)
+}
+function normalizarPedidosPOS(data) {
+  return data.map(p => ({
+    idGrupo: p.idGrupo,
+    estado: p.estado,
+    pagado: p.pagado,
+    ...p.datos // 👈 aquí aplastas todo
+  }));
+}
+
+// --- NUEVA CARGA DE PEDIDOS CON VALIDACIÓN DE HASH (Vanilla JS) ---
+async function cargarPedidos() {
+    // 1. Control de concurrencia para evitar llamadas encabalgadas
+    if (cargando) return;
+    cargando = true;
+
+    URL_API="https://script.google.com/macros/s/AKfycbzTNHZZLucxQ-p2zLnzZr-BmFEnxJNX7FJovE9tVdT5C9iDSYAxjfsub2rBQB5tpG67/exec";
+ // Pega aquí tu enlace .../exec
+
+    try {
+        // 2. Petición HTTP POST apuntando al enrutador de tu codigo.gs
+        const response = await fetch(URL_API, {
+            method: "POST",
+            mode: "cors",
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8"
+            },
+            body: JSON.stringify({ accion: "LEER_PEDIDOS_ACTIVOS" })
+        });
+
+        if (!response.ok) throw new Error("Fallo de red al consultar pedidos activos.");
+
+        const dataJson = await response.json();
+
+        // Validamos la respuesta del servidor
+        if (!dataJson.ok) {
+            throw new Error(dataJson.error || "Error interno del servidor en la lectura.");
+        }
+
+        // 'data' es la matriz devuelta por obtenerPedidosActivosDeNube()
+        const data = dataJson.resultado;
+
+        // 3. ESTRATEGIA DE HASH: ¿Hay cambios reales en la base de datos?
+        const hash = JSON.stringify(data);
+        //console.log("hash nuevo:", hash);
+        //console.log("hash viejo:", ultimoHash);
+
+        if (hash === ultimoHash) {
+            // 🔥 Si no hay cambios en las celdas de Google Sheets, salimos en paz sin tocar la UI
+            cargando = false;
+            return;
+        }
+
+        // Si cambió algo, actualizamos el testigo del hash
+        ultimoHash = hash;
+
+        // 4. NORMALIZACIÓN Y LIMPIEZA DE DATOS (Tu lógica intacta)
+        let cocinaTemp = normalizarPedidosKDS(data);
+
+        // Limpieza única y clara de acompañamientos parásitos
+        cocina = cocinaTemp.map(p => ({
+            ...p,
+            items: (p.items || []).map(item => ({
+                ...item,
+                acompanamiento:
+                    item.acompanamiento === "N/A" || !item.acompanamiento
+                        ? null
+                        : item.acompanamiento
+            }))
+        }));
+
+        // 5. RENDERIZADO VISUAL
+        renderKDS();
+
+    } catch (err) {
+        // Falla controlada (No rompe la ejecución del setInterval si lo tienes activo)
+        console.error("Error al sincronizar con la hoja de pedidos:", err.message);
+    } finally {
+        // Pase lo que pase (éxito o error), liberamos el candado para la siguiente llamada
+        cargando = false;
+    }
+}
+
+
+function normalizarPedidosKDS(data) {
+  return data.map(p => ({
+    idGrupo: p.idGrupo,
+    estado: p.estado,
+    pagado: p.pagado,
+    ...p.datos // 👈 aquí aplastas todo
+  }));
+
+// --- MOTOR DE SINCRONIZACIÓN CORREGIDO ---
+const inputCli = document.getElementById('input-cliente');
+var valorNombre = "";
+if (inputCli) {
+    inputCli.addEventListener('change', (e) => {
+         valorNombre = e.target.value.trim(); // Cambiamos el nombre para evitar confusiones
+
+        // Solo actualizamos el nombre sin resetear todo el pedido
+        if (valorNombre !== "") {
+            pedidoActivo.cliente = valorNombre;
+            console.log("👤 Cliente actualizado a:", valorNombre);
+        }
+    });
+}
+// 1. Sincronía con la memoria: El objeto global se actualiza letra por letra
+pedidoActivo.cliente = valorNombre || "Mostrador";
+
+// 2. Sincronía visual: Actualizamos la "luz" de estado
+const luz = document.getElementById('txt-cli');
+if (luz) {
+    if (valorNombre.length > 0) {
+        luz.innerText = "EDITANDO: " + valorNombre.toUpperCase();
+        luz.style.color = "#FFD700"; // Ámbar (en proceso)
+    } else {
+        luz.innerText = "ESPERANDO CLIENTE";
+        luz.style.color = "white";
+    }
+};
+};
+
+/* --- ÚLTIMAS LÍNEAS DEL SCRIPT --- */
+
+// 1. Solo declaramos las variables, sin asignarles el motor todavía
+/* --- ÚLTIMAS LÍNEAS DEL SCRIPT --- */
+// Estas variables deben estar ARRIBA, fuera de cualquier función
+let recognitionInstance = null;
+let estaGrabando = false;
+let tokens;
+
+
+function resetBotonVoz() {
+    const btnVoz = document.getElementById('btn-voz');
+    const icono = document.getElementById('icono-mic');
+    if (btnVoz) btnVoz.style.background = "#f0f0f0";
+    if (icono) icono.innerText = "🎙️";
+    escuchando = false;
+}
+
+
+function normalizar(texto) {
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function detectarCategoria(tokens) {
+  const mapaCategorias = {
+    as: "As",
+    chaufa: "Otros",
+
+    churrasco: "Churrasco",
+    completo: "Completo",
+    hamburguesa: "Hamburguesa",
+
+    papa: "Papa",
+    salchipapa: "Salchipapa",
+    salchipollo: "Salchipollo",
+
+    chorrillana: "Chorrillana",
+    chicharron: "Chich. pollo",
+
+    bebida: "Bebida",
+    jugo: "Bebida",
+    agua: "Bebida",
+    cafe: "Bebida",
+    te: "Bebida",
+
+    pescado: "Almuerzo",
+    pollo: "Almuerzo",
+    chuleta: "Almuerzo",
+    milanesa: "Almuerzo"
+  };
+
+  for (let t of tokens) {
+    if (mapaCategorias[t]) {
+      return mapaCategorias[t];
+    }
+  }
+
+  // fallback inteligente
+  //if (contieneAcompanamiento(tokens)) return "Almuerzo";
+
+  return null; // 🔥 mejor que asumir
+}
+function coincideToken(t, pt) {
+  if (t.length < 3) return false; // 🔥 clave
+  return pt.startsWith(t);
+}
+
+
+function encontrarEnIndice(tokens, indice, catalogo) {
+  if (!catalogo || catalogo.length === 0) return null;
+
+  let conteoIds = {}; // Para contar cuántos tokens coinciden con cada producto
+  const llaves = Object.keys(indice);
+
+  tokens.forEach(t => {
+    const tLower = t.toLowerCase();
+    // Buscamos en el índice llaves que empiecen con el token (ej: "chich" -> "chicharron")
+    llaves.forEach(llave => {
+      if (llave.startsWith(tLower)) {
+        
+        indice[llave].forEach(id => {
+          conteoIds[id] = (conteoIds[id] || 0) + 1;
+        });
+      }
+    });
+  });
+  
+
+// var res = Object.keys(indice).filter(v => v.startsWith('as')).map(e => indice[e]);
+
+// onsole.log(res);
+
+ // res = Object.entries(indice)
+ //             .filter(([k]) => k.startsWith('chi'))
+ //// console.log("res ",res);
+
+  // Buscamos el ID con más coincidencias
+  let mejorId = null;
+  let maxCoincidencias = 0;
+  for (const id in conteoIds) {
+    if (conteoIds[id] > maxCoincidencias) {
+      maxCoincidencias = conteoIds[id];
+      mejorId = id;
+    }
+  }
+
+  // Retornamos el objeto real del catálogo
+  //return mejorId ? mejorId : null;
+  return mejorId ? catalogo.find(p => p.nombreNormalizado == mejorId) : null;
+}
+function detenerSincronizacionPOS() {
+    clearInterval(intervaloPOS);
+    console.warn("⛔ Sincronización POS detenida");
+}
+
+function iniciarSincronizacionPOS() {
+    intervaloPOS = setInterval(cargarPedidosPOS, 8000);
+    console.warn("✅ Sincronización POS iniciada");
+}
+
+function limpiarSistemaPOS() {
+
+    console.warn("🧹 Limpieza total POS");
+
+    localStorage.removeItem("pedidosEnEspera");
+    localStorage.removeItem("control_estados_terminales");
+
+    pedidosEnEspera = [];
+    
+    renderTickets();
+
+    console.log("✅ LocalStorage limpio");
+}
+
+
+async function sincronizadorPedidos() {
+    // 1. Validar bloqueo externo (interfaz de pago activa)
+    if (bloqueoSincronizacion) {
+        console.warn("Sincronización saltada: Protegiendo pago POS.");
+        programarSiguienteSincronizacion();
+        return;
+    }
+
+    try {
+        // 2. Esperar a que termine la petición actual obligatoriamente
+        await cargarPedidosPOS(); 
+    } catch (error) {
+        console.error("Error al cargar pedidos del POS:", error);
+    } finally {
+        // 3. Programar el siguiente ciclo SOLO cuando el actual finalizó
+        programarSiguienteSincronizacion();
+    }
+}
+
+
+function programarSiguienteSincronizacion() {
+    // Limpiar cualquier residuo previo por seguridad
+    clearTimeout(timeoutPOS); 
+    timeoutPOS = setTimeout(sincronizadorPedidos, 8000);
+}
+
+
+function puedeAvanzarEstado(actual, nuevo) {
+    return ORDEN_ESTADOS[nuevo] > ORDEN_ESTADOS[actual];
+}
+function actualizarPago(pedido, nuevoPago) {
+    if (pedido.pagado === false && nuevoPago === true) {
+        pedido.pagado = true;
+    }
+}
+// Recuperar pedidos que existen en Local pero NO en Nube (pedidos en creación)
+//const localesNoEnNube = locales.filter(l => !pedidosNube.some(n => n.idGrupo === l.idGrupo));
+//pedidosEnEspera = [...nuevosPedidos, ...localesNoEnNube];
+function normalizarEstado(estado) {
+  const e = (estado || "PENDIENTE").trim().toUpperCase();
+  if (e === "EN PROCESOS") return "EN PROCESO";
+  return e;
+}
+
+function esPagado(valor) {
+  // Convierte el texto a MAYÚSCULAS y remueve espacios fantasmas
+  const formatoLimpio = typeof valor === "string" ? valor.toUpperCase().trim() : valor;
+
+  return formatoLimpio === true || formatoLimpio === "SI" || formatoLimpio === "TRUE" || formatoLimpio === 1;
+}
+
+
+function fusionarPedido(nube, local) {
+  console.log("FUSIONAR - Local actual:", local);
+  console.log("FUSIONAR - Estado entrante de la nube:", nube?.estado);
+  console.log("FUSIONAR - Objeto nube completo recibido:", nube);
+
+  const nubeEsInvalida = !nube || typeof nube !== "object" || !nube.estado;
+  if (nubeEsInvalida) {
+    console.error("❌ ABORTADO: Lectura de la nube corrupta. Se descarta el proceso de fusión.");
+    return local || null;
+  }
+
+  const estadoNube = normalizarEstado(nube.estado);
+  const estadoLocal = normalizarEstado(local?.estado);
+  
+  
+  if (!local) {
+    return {
+      ...nube,
+      cliente: nube.cliente || "Sin Nombre",
+      estado: estadoNube,
+      pagado: esPagado(nube.pagado),
+      
+      origen: "NUBE_PURA"
+    };
+  }
+
+  const prioridadNube = ORDEN_ESTADOS[estadoNube] ?? -1;
+  const prioridadLocal = ORDEN_ESTADOS[estadoLocal] ?? -1;
+
+  if (prioridadNube < prioridadLocal) {
+    console.warn(
+      `⚠️ CORRUPCIÓN DE FLUJO DETECTADA: La nube intentó bajar el estado a "${estadoNube}" (${prioridadNube}), ` +
+      `pero el local ya está en "${estadoLocal}" (${prioridadLocal}). Se descarta la nube.`
+    );
+
+    return {
+      ...local,
+      pagado: esPagado(local?.pagado) || esPagado(nube?.pagado),
+      estado: estadoLocal,
+      origen: "LOCAL_PROTEGIDO"
+    };
+  }
+
+  const pagadoFinal = esPagado(local?.pagado) || esPagado(nube?.pagado)
+
+  return {
+    ...local,
+    ...nube,
+    estado: estadoNube,
+    pagado: pagadoFinal,
+    origen: "MEMORIA_SINCRO_VERIFICADA"
+  };
+}
+function actualizarYPersistirPedidos(pedidosNube = []) {
+  // 1. Asegurar la existencia de las variables globales
+  if (typeof pedidosEnEspera === 'undefined') pedidosEnEspera = [];
+  const vendidos = typeof idsPedidosVendidosInicio !== 'undefined' ? idsPedidosVendidosInicio : [];
+
+  // 2. LEER LOCALSTORAGE UNA SOLA VEZ
+  const pedidosStorage = JSON.parse(localStorage.getItem("pedidosEnEspera")) || [];
+
+  /* ==========================================================================
+     🛡️ ESCUDO DE INICIO DE SESIÓN / RECUPERACIÓN DE CAÍDAS
+     ========================================================================== */
+  // Si la memoria RAM está vacía pero el disco sí tiene datos guardados,
+  // inyectamos el respaldo del disco en la RAM inmediatamente.
+  if (pedidosEnEspera.length === 0 && pedidosStorage.length > 0) {
+    console.log("🔄 RAM vacía detectada. Hidratando memoria desde el localStorage...");
+    pedidosEnEspera = [...pedidosStorage];
+  }
+
+  // 3. Set de exclusión rápida por historial de ventas
+  const idsLimpiosVendidos = new Set(vendidos);
+
+  // 4. INDEXAR DATOS LOCALES (Ahora que la RAM y el Storage están alineados)
+  const mapaLocales = new Map();
+  pedidosStorage.forEach(local => { if (local?.idGrupo) mapaLocales.set(local.idGrupo, local); });
+  pedidosEnEspera.forEach(local => { if (local?.idGrupo) mapaLocales.set(local.idGrupo, local); });
+
+  // 5. Inicializar el mapa de consolidación de pantalla
+  const mapaFusionado = new Map();
+
+  // 6. PROCESAR LA NUBE
+  const nubeTieneDatos = Array.isArray(pedidosNube) && pedidosNube.length > 0;
+  if (nubeTieneDatos) {
+    pedidosNube.forEach(nube => {
+      if (!nube?.idGrupo) return;
+
+      // Si el pedido ya figura en la hoja Ventas, se ignora
+      if (idsLimpiosVendidos.has(nube.idGrupo)) return;
+
+      const local = mapaLocales.get(nube.idGrupo) || null;
+      const fusionado = fusionarPedido(nube, local);
+
+      if (fusionado) {
+        mapaFusionado.set(fusionado.idGrupo, fusionado);
+      }
+    });
+  }
+
+    /* ==========================================================================
+     🛡️ PASO 7: ESCUDO LOCAL ULTRA SIMPLIFICADO (LOCK SEMÁNTICO)
+     ========================================================================== */
+  mapaLocales.forEach((local, idGrupo) => {
+
+    // 1. Si ya se guardó en el historial de ventas del TSV, se descarta
+    if (idsLimpiosVendidos.has(idGrupo)) {
+      return;
+    }
+
+    // 2. LOCK SEMÁNTICO: Si el cajero lo marcó como borrado en recuperarPedido,
+    // lo ignoramos por completo para que desaparezca definitivamente del POS.
+    if (local.borrado === true) {
+      return;
+    }
+
+    // 3. Control de caídas de internet: si no vino en la nube, se mantiene vivo
+    if (!mapaFusionado.has(idGrupo)) {
+      mapaFusionado.set(idGrupo, local);
+    }
+
+  });
+
+  // 8. ASIGNAR EL RESULTADO FINAL A LA MEMORIA RAM
+  // Sin filtros automáticos destructivos. Todo lo consolidado va directo a la pantalla.
+  pedidosEnEspera = Array.from(mapaFusionado.values());
+
+  // 9. PERSISTENCIA EN DISCO
+  localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
+
+  // 10. RE-DIBUJAR LA PANTALLA
+  if (typeof renderTickets === 'function') {
+    renderTickets();
+  }
+}
+
+
+/**
+* Actualiza y persiste los pedidos sincronizados con la nube.
+* @param {Array} pedidosNube - Lista de pedidos recibidos desde la nube.
+*/
+
+function actualizarYPersistirPedidos0(pedidosNube = []) {
+  // 1. Si la respuesta de la red está rota o vacía, no tocamos nada
+  if (!Array.isArray(pedidosNube) || pedidosNube.length === 0) return;
+
+  // 2. Asegurar variables locales de respaldo
+  if (typeof pedidosEnEspera === 'undefined') pedidosEnEspera = [];
+  const vendidos = typeof idsPedidosVendidosInicio !== 'undefined' ? idsPedidosVendidosInicio : [];
+
+  // 3. Leer localStorage una sola vez
+  const pedidosStorage = JSON.parse(localStorage.getItem("pedidosEnEspera")) || [];
+
+  // 4. Set del historial de ventas para exclusión por latencia (O(1))
+  const idsLimpiosVendidos = new Set(
+    vendidos.map(id => String(id).replace(/\D/g, '').trim().substring(0, 11))
+  );
+
+  // 5. Indexar por idGrupo lo que ya existe en memoria/storage
+  const mapaLocales = new Map();
+  [...pedidosStorage, ...pedidosEnEspera].forEach(local => {
+    if (local?.idGrupo) {
+      mapaLocales.set(local.idGrupo, local);
+    }
+  });
+
+  // 6. Fusionar nube + local
+  const mapaFusionado = new Map();
+
+  pedidosNube.forEach(nube => {
+    if (!nube?.idGrupo) return;
+
+    const idLimpio = String(nube.idGrupo).replace(/\D/g, '').trim().substring(0, 11);
+    console.table("idsLimpiosYVendidos ", idsLimpiosVendidos);
+    if (idsLimpiosVendidos.has(idLimpio)) return; /* revisar */
+
+    const local = mapaLocales.get(nube.idGrupo) || null;
+
+
+    const fusionado = fusionarPedido(nube, local);
+
+    if (fusionado) {
+      mapaFusionado.set(fusionado.idGrupo, fusionado);
+    }
+
+});
+
+  // 7. Conservar locales que no vinieron en la nube, pero solo si no están cerrados
+  // 7. Conservar locales que no vinieron en la nube, pero SOLO si no han sido entregados por el cajero
+  mapaLocales.forEach((local, idGrupo) => {
+    const estadoLimpio = normalizarEstado(local.estado);
+    const pagado = esPagado(local.pagado);
+
+    // Un pedido solo se considera totalmente muerto si ya se pagó Y ADEMÁS se finalizó en cocina
+    const esTerminadoYPagado = pagado && estadoLimpio === "FINALIZADO";
+
+    // 🛡️ ESCUDO: Si no vino en la nube, pero NO está pagado y finalizado a la vez, lo conservamos vivo en el POS
+    if (!mapaFusionado.has(idGrupo) && !esTerminadoYPagado) {
+        mapaFusionado.set(idGrupo, local);
+    }
+  });
+
+  // 8. Convertir a arreglo final
+  const pedidosFinales = Array.from(mapaFusionado.values());
+
+  /* ==========================================================================
+     🛡️ PASO 9: EL FILTRO DEFINITIVO DE RESGUARDO (DESCOMENTAR Y APLICAR ESTO)
+     ========================================================================== */
+  // Este filtro garantiza que NADA desaparezca de la bandeja del POS a menos que 
+  // cumpla estrictamente con estar PAGADO por caja y FINALIZADO por cocina.
+  pedidosEnEspera = pedidosFinales.filter(p => {
+      const estadoLimpio = normalizarEstado(p.estado);
+      const pagado = esPagado(p.pagado);
+
+      const esTerminadoYPagado = pagado && estadoLimpio === "FINALIZADO";
+      
+      // Si está listo en cocina (FINALIZADO) pero NO está pagado (Caso Pablo), 
+      // retornamos TRUE para que el ticket se quede bien amarrado a la pantalla del POS.
+      if (estadoLimpio === "FINALIZADO" && !pagado) {
+          return true; 
+      }
+
+      // Si cumple ambas, retorna FALSE para sacarlo de la bandeja (ya se archivó con recuperarPedido)
+
+      return !esTerminadoYPagado || esTerminadoYPagado ;
+  });
+console.log("pedidosFinales ",pedidosFinales);
+console.log("pedidosEnEspera ",pedidosEnEspera);
+  // 10. Persistencia corregida
+  localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
+
+
+  // 11. Debug
+  console.log("=== NUBE ===");
+  console.table(
+    pedidosNube.map(p => ({
+      cliente: p.cliente,
+      hora: new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      pagado: p.pagado,
+      estado: p.estado
+    }))
+  );
+
+  console.log("=== RAM FINAL ===");
+  console.table(
+    pedidosEnEspera.map(p => ({
+      cliente: p.cliente,
+      hora: new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      pagado: p.pagado,
+      estado: p.estado
+    }))
+  );
+
+  // 12. Render
+  if (typeof renderTickets === 'function') renderTickets();
+}
+
+
+function guardarPedidosEnEspera(nuevosPedidos) {
+  // 1. Actualizamos la memoria RAM global de la app
+  pedidosEnEspera = nuevosPedidos;
+  
+  // 2. Espejamos inmediatamente en el almacenamiento local de forma segura
+  try {
+    localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
+  } catch (e) {
+    console.error("❌ No se pudo persistir en localStorage (¿Disco lleno?):", e);
+  }
+}
+async function procesarColaOffline() {
+  // Si no hay internet o la cola está vacía, no hacemos nada
+  if (colaReintentosOffline.length === 0 || !navigator.onLine) return;
+
+  console.log(`🔄 Cola Offline: Intentando procesar ${colaReintentosOffline.length} envíos pendientes...`);
+  
+  // Copiamos la cola actual para procesarla
+  const colaActual = [...colaReintentosOffline];
+
+  for (const idGrupo of colaActual) {
+    try {
+      // 1. Intentar actualizar las ventas
+      await actualizarEstadoEnVentas(idGrupo, "FINALIZADO");
+      
+      // 2. Intentar eliminar de la base de datos de activos
+      const response = await fetch(URL_API, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ accion: "ELIMINAR_PEDIDO", payload: { idGrupo } })
+      });
+      const data = await response.json();
+
+      if (data?.ok) {
+        console.log(`✅ Sincronización tardía exitosa para el pedido: ${idGrupo}`);
+        // Si la nube respondió OK, lo sacamos de la cola
+        colaReintentosOffline = colaReintentosOffline.filter(id => id !== idGrupo);
+        localStorage.setItem("colaReintentosOffline", JSON.stringify(colaReintentosOffline));
+      }
+    } catch (err) {
+      console.warn(`⚠️ La red sigue inestable. Pedido ${idGrupo} se mantiene en cola para el próximo intento.`);
+      break; // Detenemos el bucle para no saturar si internet se volvió a caer
+    }
+  }
+}
+const inputCliente = document.getElementById('input-cliente');
+
+if (inputCliente) {
+    // Escucha tanto el teclado como los cambios directos de texto (útil para el parser de voz)
+    inputCliente.addEventListener('input', function() {
+        const textoCargado = this.value.trim();
+
+        if (textoCargado.length >= 1) {
+            // Si el cajero escribió o la voz ingresó texto, activamos el datalist
+            this.setAttribute('list', 'sugerencias-clientes');
+        } else {
+            // Si el campo queda totalmente vacío, desconectamos el datalist para que no flote la lista sola
+            this.removeAttribute('list');
+        }
+    });
+
+    // Seguridad extra: si hace clic estando vacío, nos aseguramos de que no despliegue nada
+    inputCliente.addEventListener('focus', function() {
+        if (this.value.trim() === "") {
+            this.removeAttribute('list');
+        }
+    });
+}
+function procesarVozCliente1(nombreDetectado) {
+    const inputCliente = document.getElementById('input-cliente');
+    if (inputCliente) {
+        inputCliente.value = nombreDetectado;
+        
+        // 🔥 CRÍTICO: Avisamos al navegador que el campo cambió para que ejecute el filtro y despliegue la lista
+        inputCliente.dispatchEvent(new Event('input'));
+    }
+}
+// 💡 SOLUCIÓN AISLADA: Se activa solo cuando el campo recibe el texto del parser
+function procesarVozCliente(nombreDetectado) {
+    const inputCliente = document.getElementById('input-cliente');
+    
+    if (inputCliente) {
+        // 1. Inyectamos el nombre que devolvió el parser
+        inputCliente.value = nombreDetectado;
+        
+        // 2. Avisamos al navegador que el campo cambió para ejecutar el filtro interno
+        inputCliente.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // 3. Intentamos abrir visualmente el datalist de forma segura si el campo no está vacío
+        if (inputCliente.value.trim() !== '') {
+            try {
+                // Si el navegador lo permite, la lista se desplegará en pantalla automáticamente
+                if (typeof inputCliente.showPicker === 'function') {
+                    inputCliente.showPicker();
+                }
+            } catch (e) {
+                // Si las políticas de seguridad del navegador bloquean la apertura visual automática,
+                // la aplicación ignora el bloqueo silenciosamente y continúa funcionando sin congelarse.
+                console.log("El navegador filtró el datalist internamente pero bloqueó el despliegue visual.");
+            }
+        }
+    }
+}
+
+
+
+</script>
+
+</body>
+</html>

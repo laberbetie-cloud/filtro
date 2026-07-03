@@ -106,21 +106,42 @@ async function generateMapAndExtractVerses() {
     const lines = text.split('\n');
     const mapaEstudio = {};
     let questionCounter = 0; 
-    let todasLasCitasBLB = [];
     let principioOrganizador = "";
+    
+    const agrupadorCitasBLB = {};
 
-    // 🔍 CAPTURA SEGURA: Buscamos las dos primeras líneas reales que tengan texto
     const lineasConTexto = lines.map(l => l.trim()).filter(l => l !== "");
     if (lineasConTexto.length >= 2) {
         principioOrganizador = `${lineasConTexto[0]}\n${lineasConTexto[1]}\n\n`;
         localStorage.setItem('principioOrganizador', principioOrganizador);
     }
 
-    //const pregRegex = /(?:(?:Question|Pregunta)\s*\d+)/i;
-	 // 🎯 Detecta si la línea empieza con número, tiene un signo de pregunta, y opcionalmente citas al final
-    const pregRegex = /^\s*\d+[\s.]*.*\?.*$/i;
+    const pregRegex = /^\s*\d+[\d\s,.-]*(?:[a-z]\))?.*\?.*/i;
     const citaRegex = /\(([^)]+)\)/g;
-    
+
+    const traductorEspanolBLB = {
+        "mateo": "Mat", "marcos": "Mrk", "lucas": "Luk", "juan": "Jhn", "hechos": "Act",
+        "romanos": "Rom", "1 corintios": "1Co", "2 corintios": "2Co", "galatas": "Gal", 
+        "gálatas": "Gal", "efesios": "Eph", "filipenses": "Phl", "colosenses": "Col", 
+        "1 tesalonicenses": "1Th", "2 tesalonicenses": "2Th", "1 timoteo": "1Ti", 
+        "2 timoteo": "2Ti", "tito": "Tit", "filemon": "Phm", "filemón": "Phm", "hebreos": "Heb", 
+        "santiago": "Jam", "1 pedro": "1Pe", "2 pedro": "2Pe", "1 juan": "1Jn", "2 juan": "2Jn", 
+        "3 juan": "3Jn", "judas": "Jud", "revelacion": "Rev", "revelación": "Rev", 
+        "apocalipsis": "Rev", "génesis": "Gen", "genesis": "Gen", "éxodo": "Exo", "exodo": "Exo", 
+        "levítico": "Lev", "levitico": "Lev", "números": "Num", "numeros": "Num", 
+        "deuteronomio": "Deu", "josué": "Jos", "josue": "Jos", "jueces": "Jdg", "rut": "Rut", 
+        "1 samuel": "1Sa", "2 samuel": "2Sa", "1 reyes": "1Ki", "2 reyes": "2Ki", 
+        "1 crónicas": "1Ch", "1 cronicas": "1Ch", "2 crónicas": "2Ch", "2 cronicas": "2Ch", 
+        "esdras": "Ezr", "nehemías": "Neh", "nehemiass": "Neh", "ester": "Est", "job": "Job", 
+        "salmo": "Psa", "salmos": "Psa", "proverbios": "Pro", "eclesiastés": "Ecc", 
+        "eclesiastes": "Ecc", "cantar de los cantares": "Sng", "cantares": "Sng", "isaías": "Isa", 
+        "isaias": "Isa", "jeremías": "Jer", "jeremias": "Jer", "lamentaciones": "Lam", 
+        "ezequiel": "Ezk", "daniel": "Dan", "oseas": "Hos", "joel": "Joe", "amós": "Amo", 
+        "amos": "Amo", "abdías": "Oba", "abdias": "Oba", "jonás": "Jon", "jonas": "Jon", 
+        "miqueas": "Mic", "nahúm": "Nah", "nahum": "Nah", "habacuc": "Hab", "sofonías": "Zep", 
+        "sofonias": "Zep", "hageo": "Hag", "zacarías": "Zec", "zacarias": "Zec", "malaquías": "Mal", 
+        "malaquias": "Mal"
+    };
 
     lines.forEach(line => {
         const lineClean = line.trim();
@@ -128,39 +149,77 @@ async function generateMapAndExtractVerses() {
 
         if (pregRegex.test(lineClean)) {
             questionCounter++;
-let preguntaTextoLimpio = lineClean.replace(/^\d+[\s.]*/, '');
-            //let preguntaTextoLimpio = lineClean.replace(/^\d+\.\s*/, '');
+            let preguntaTextoLimpio = lineClean.replace(/^\s*\d+[\d\s,.-]*(?:[a-z]\))?\s*/i, '');
             mapaEstudio[questionCounter] = { textoOriginal: preguntaTextoLimpio, citas: [], textosCompletosBLB: [] };
         }
 
         if (questionCounter > 0) {
+            citaRegex.lastIndex = 0;
             const parentesisEncontrados = lineClean.match(citaRegex);
+            
             if (parentesisEncontrados) {
                 parentesisEncontrados.forEach(parentesis => {
                     let contenidoParentesis = parentesis.replace(/[()]/g, '').trim();
-                    if (contenidoParentesis.toLowerCase().includes("picture") || contenidoParentesis.toLowerCase().includes("read")) return;
+                    
+                    let contenidoBajo = contenidoParentesis.toLowerCase();
+                    if (contenidoBajo.includes("picture") || contenidoBajo.includes("read") || 
+                        contenidoBajo.includes("nota") || contenidoBajo.includes("imagen") || 
+                        contenidoBajo.includes("recuadro") || contenidoBajo.includes("leyenda")) return;
                     
                     const partesCitas = contenidoParentesis.split(';');
                     partesCitas.forEach(parte => {
                         let fragmento = parte.trim();
-                        let libroDetectado = ""; let libroEstandar = "";
+                        
+                        // 🎯 ARREGLO DE RANGOS VERBALES ANTES DE LA CAPTURA ESTRUCTURAL
+                        fragmento = fragmento
+                            .replace(/\s+a\s+(\d+)/i, '-$1') // Convierte "4 a 8" -> "4-8"
+                            .replace(/(\d+)[a-z]\b/i, '$1'); // Remueve letras adjuntas ("8a" -> "8")
 
-                        for (const [key, value] of Object.entries(bookMapping)) {
-                            const runRegex = new RegExp(`^${key}\\b`, 'i');
-                            if (runRegex.test(fragmento)) { libroDetectado = key; libroEstandar = value; break; }
-                        }
+                        // Expresión regular que tolera el formato nativo completo en español
+                        const estructuraMatch = fragmento.match(/^(.*?)\s+(?:capítulo|cap\.?)\s*(\d+)\s*(?:versículos|versículo|vers?\.?)?\s*([\d\s,.-]+)/i);
 
-                        if (libroEstandar) {
-                            let numerosCita = fragmento.replace(new RegExp(`^${libroDetectado}\\b`, 'i'), '').trim();
-                            const capMatch = numerosCita.match(/^(\d+):/);
-                            if (capMatch && capMatch[1]) {
-                                const capituloBase = capMatch[1];
-                                const versiculosSeparados = numerosCita.replace(/^\d+:/, '').split(',');
+                        if (estructuraMatch) {
+                            // Extraemos las capturas usando índices seguros estricto de JS
+                            let rawLibro = estructuraMatch[1];
+                            let capituloBase = estructuraMatch[2];
+                            let rawVersiculos = estructuraMatch[3];
+
+                            // Limpiamos los caracteres ordinales e intermedios del texto del libro
+                            let libroTextoCrudo = rawLibro.toLowerCase()
+                                .replace(/[ª°º]/g, '')
+                                .replace(/\b(?:a\s+los|de)\b/g, '')
+                                .replace(/\s+/g, ' ')
+                                .trim();
+
+                            if (libroTextoCrudo === "compare" || libroTextoCrudo === "lea" || libroTextoCrudo === "vea") return;
+
+                            let cadenaVersiculos = rawVersiculos.replace(/\s+/g, ''); 
+                            let libroEstandar = "";
+                            
+                            if (traductorEspanolBLB[libroTextoCrudo]) {
+                                libroEstandar = traductorEspanolBLB[libroTextoCrudo];
+                            } else {
+                                for (const [key, value] of Object.entries(bookMapping)) {
+                                    if (libroTextoCrudo.includes(key.toLowerCase()) || key.toLowerCase().includes(libroTextoCrudo)) {
+                                        libroEstandar = value;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (libroEstandar) {
+                                const llaveAgrupadora = `${libroEstandar} ${capituloBase}`;
+                                if (!agrupadorCitasBLB[llaveAgrupadora]) {
+                                    agrupadorCitasBLB[llaveAgrupadora] = [];
+                                }
+
+                                const versiculosSeparados = cadenaVersiculos.split(',');
                                 versiculosSeparados.forEach(ver => {
-                                    let verLimpio = ver.trim(); if (!verLimpio) return;
-                                    let citaFormateada = verLimpio.includes(':') ? `${libroEstandar} ${verLimpio}` : `${libroEstandar} ${capituloBase}:${verLimpio}`;
-                                    mapaEstudio[questionCounter].citas.push(citaFormateada);
-                                    todasLasCitasBLB.push(citaFormateada);
+                                    let verLimpio = ver.trim();
+                                    if (!verLimpio) return;
+                                    
+                                    mapaEstudio[questionCounter].citas.push(`${libroEstandar} ${capituloBase}:${verLimpio}`);
+                                    agrupadorCitasBLB[llaveAgrupadora].push(verLimpio);
                                 });
                             }
                         }
@@ -176,17 +235,54 @@ let preguntaTextoLimpio = lineClean.replace(/^\d+[\s.]*/, '');
     }
 
     localStorage.setItem('mapaEstudioActivo', JSON.stringify(mapaEstudio));
-    todasLasCitasBLB = [...new Set(todasLasCitasBLB)];
-    const blbSearchString = todasLasCitasBLB.join('; ');
 
-    try {
-        await navigator.clipboard.writeText(blbSearchString);
-        statusDiv.className = 'success'; statusDiv.innerText = '¡Fase 1 Éxito! Cadena copiada para BLB.';
-        txtArea.value = ''; 
-    } catch (err) {
-        statusDiv.className = 'error'; statusDiv.innerText = 'Error al escribir en el portapapeles.';
+    const bloquesCitasFormateados = [];
+    for (const [libroYCapitulo, listaVersiculos] of Object.entries(agrupadorCitasBLB)) {
+        const versiculosUnicos = [...new Set(listaVersiculos)];
+        const versiculosUnidosConComas = versiculosUnicos.join(',');
+        bloquesCitasFormateados.push(`${libroYCapitulo}:${versiculosUnidosConComas}`);
+    }
+
+    const blbSearchString = bloquesCitasFormateados.join('; ');
+
+    console.log("Cadena unificada final para BLB:", blbSearchString);
+
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            await navigator.clipboard.writeText(blbSearchString);
+            statusDiv.className = 'success'; statusDiv.innerText = '¡Fase 1 Éxito! Cadena copiada para BLB.';
+            txtArea.value = ''; 
+        } catch (err) {
+            statusDiv.className = 'error'; statusDiv.innerText = 'Error al escribir en el portapapeles.';
+        }
+    } else {
+        const textAreaTemporal = document.createElement("textarea");
+        textAreaTemporal.value = blbSearchString;
+        document.body.appendChild(textAreaTemporal);
+        textAreaTemporal.select();
+        try {
+            document.execCommand('copy');
+            statusDiv.className = 'success'; statusDiv.innerText = '¡Fase 1 Éxito! Cadena copiada para BLB.';
+            txtArea.value = '';
+        } catch (err) {
+            statusDiv.className = 'error'; statusDiv.innerText = 'Error al copiar la cadena.';
+        }
+        document.body.removeChild(textAreaTemporal);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 async function matchBLBTextWithMap() {
     const statusDiv = document.getElementById('status');

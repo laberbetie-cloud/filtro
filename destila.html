@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bible Study Workspace - Unified</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: #ffffff;
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.06);
+            text-align: center;
+            max-width: 520px;
+            width: 100%;
+        }
+        h1 { color: #1a1a1a; font-size: 24px; margin-bottom: 6px; }
+        .subtitle { color: #666666; font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+        
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            margin-bottom: 20px;
+            font-family: inherit;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #0076ff;
+        }
+
+        .btn-group { display: flex; flex-direction: column; gap: 12px; }
+        button {
+            border: none; padding: 14px 20px; font-size: 15px;
+            font-weight: 600; border-radius: 8px; cursor: pointer;
+            transition: all 0.2s ease; width: 100%;
+        }
+        .btn-primary { background-color: #0076ff; color: white; }
+        .btn-primary:hover { background-color: #0060d6; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-success:hover { background-color: #218838; }
+        button:active { transform: scale(0.99); }
+        
+        #status { margin-top: 20px; font-size: 14px; font-weight: 500; min-height: 20px; padding: 10px; border-radius: 6px; }
+        .success { color: #28a745; background-color: #e8f5e9; }
+        .error { color: #dc3545; background-color: #f8d7da; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>Bible Study Workspace</h1>
+    <p class="subtitle">Pega tu artículo de estudio en el cuadro inferior. El sistema creará el mapa de preguntas en memoria y preparará las consultas para BLB.</p>
+    
+    <!-- CAMPO DE TEXTO FUENTE UNIFICADO -->
+    <textarea id="sourceText" placeholder="Pega aquí el texto completo del artículo de estudio o los versículos de BLB..."></textarea>
+
+    <div class="btn-group">
+        <!-- ACCIÓN 1: Genera el mapa relacional interno y copia las citas limpias para BLB -->
+        <button class="btn-primary" onclick="generateMapAndExtractVerses()">1. Crear Mapa y Cadena para BLB</button>
+        
+        <!-- ACCIÓN 2: Toma los textos de BLB pegados, los aparea con el mapa y copia el resultado final consolidado -->
+        <button class="btn-success" onclick="matchBLBTextWithMap()">2. Parear Versículos y Copiar Cuestionario Final</button>
+    </div>
+    
+    <div id="status"></div>
+</div>
+
+<script>
+const bookMapping = {
+    "romans": "Rom", "rom": "Rom", "matthew": "Mat", "mat": "Mat",
+    "1 thessalonians": "1Th", "1 th": "1Th", "2 corinthians": "2Co", "2 cor": "2Co",
+    "acts": "Act", "1 kings": "1Ki", "2 timothy": "2Ti", "habakkuk": "Hab",
+    "james": "Jam", "ecclesiastes": "Ecc", "isaiah": "Isa", "proverbs": "Pro",
+    "1 john": "1Jn", "1 jn": "1Jn", "gén": "Gen", "éx": "Exo", "luc": "Luk", "mar": "Mrk",
+    "1 peter": "1Pe", "1 pet": "1Pe", "john": "Jhn", "jn": "Jhn"
+};
+
+async function generateMapAndExtractVerses() {
+    const statusDiv = document.getElementById('status');
+    const txtArea = document.getElementById('sourceText');
+    statusDiv.className = ''; statusDiv.innerText = 'Generando mapa relacional...';
+
+    let text = txtArea.value;
+    if (!text.trim()) {
+        statusDiv.className = 'error'; statusDiv.innerText = 'Por favor, pega primero el artículo en el cuadro de texto.';
+        return;
+    }
+    
+    text = text.replace(/\u00A0/g, ' '); 
+    const lines = text.split('\n');
+    const mapaEstudio = {};
+    let questionCounter = 0; 
+    let todasLasCitasBLB = [];
+    let principioOrganizador = "";
+
+    // 🔍 CAPTURA SEGURA: Buscamos las dos primeras líneas reales que tengan texto
+    const lineasConTexto = lines.map(l => l.trim()).filter(l => l !== "");
+    if (lineasConTexto.length >= 2) {
+        principioOrganizador = `${lineasConTexto[0]}\n${lineasConTexto[1]}\n\n`;
+        localStorage.setItem('principioOrganizador', principioOrganizador);
+    }
+
+    const pregRegex = /(?:(?:Question|Pregunta)\s*\d+)/i;
+    const citaRegex = /\(([^)]+)\)/g;
+
+    lines.forEach(line => {
+        const lineClean = line.trim();
+        if (!lineClean) return;
+
+        if (pregRegex.test(lineClean)) {
+            questionCounter++;
+            let preguntaTextoLimpio = lineClean.replace(/^\d+\.\s*/, '');
+            mapaEstudio[questionCounter] = { textoOriginal: preguntaTextoLimpio, citas: [], textosCompletosBLB: [] };
+        }
+
+        if (questionCounter > 0) {
+            const parentesisEncontrados = lineClean.match(citaRegex);
+            if (parentesisEncontrados) {
+                parentesisEncontrados.forEach(parentesis => {
+                    let contenidoParentesis = parentesis.replace(/[()]/g, '').trim();
+                    if (contenidoParentesis.toLowerCase().includes("picture") || contenidoParentesis.toLowerCase().includes("read")) return;
+                    
+                    const partesCitas = contenidoParentesis.split(';');
+                    partesCitas.forEach(parte => {
+                        let fragmento = parte.trim();
+                        let libroDetectado = ""; let libroEstandar = "";
+
+                        for (const [key, value] of Object.entries(bookMapping)) {
+                            const runRegex = new RegExp(`^${key}\\b`, 'i');
+                            if (runRegex.test(fragmento)) { libroDetectado = key; libroEstandar = value; break; }
+                        }
+
+                        if (libroEstandar) {
+                            let numerosCita = fragmento.replace(new RegExp(`^${libroDetectado}\\b`, 'i'), '').trim();
+                            const capMatch = numerosCita.match(/^(\d+):/);
+                            if (capMatch && capMatch[1]) {
+                                const capituloBase = capMatch[1];
+                                const versiculosSeparados = numerosCita.replace(/^\d+:/, '').split(',');
+                                versiculosSeparados.forEach(ver => {
+                                    let verLimpio = ver.trim(); if (!verLimpio) return;
+                                    let citaFormateada = verLimpio.includes(':') ? `${libroEstandar} ${verLimpio}` : `${libroEstandar} ${capituloBase}:${verLimpio}`;
+                                    mapaEstudio[questionCounter].citas.push(citaFormateada);
+                                    todasLasCitasBLB.push(citaFormateada);
+                                });
+                            }
+                        }
+                    });
+                });
+            }
+        }
+    });
+
+    if (Object.keys(mapaEstudio).length === 0) {
+        statusDiv.className = 'error'; statusDiv.innerText = 'No se estructuró ninguna pregunta. Revisa el formato.';
+        return;
+    }
+
+    localStorage.setItem('mapaEstudioActivo', JSON.stringify(mapaEstudio));
+    todasLasCitasBLB = [...new Set(todasLasCitasBLB)];
+    const blbSearchString = todasLasCitasBLB.join('; ');
+
+    try {
+        await navigator.clipboard.writeText(blbSearchString);
+        statusDiv.className = 'success'; statusDiv.innerText = '¡Fase 1 Éxito! Cadena copiada para BLB.';
+        txtArea.value = ''; 
+    } catch (err) {
+        statusDiv.className = 'error'; statusDiv.innerText = 'Error al escribir en el portapapeles.';
+    }
+}
+
+async function matchBLBTextWithMap() {
+    const statusDiv = document.getElementById('status');
+    const txtArea = document.getElementById('sourceText');
+    statusDiv.className = ''; statusDiv.innerText = 'Sincronizando textos...';
+
+    const mapaGuardado = localStorage.getItem('mapaEstudioActivo');
+    const principioGuardado = localStorage.getItem('principioOrganizador') || "";
+    if (!mapaGuardado) {
+        statusDiv.className = 'error'; statusDiv.innerText = 'Error: No existe un mapa activo en memoria.';
+        return;
+    }
+    const mapaEstudio = JSON.parse(mapaGuardado);
+
+    const blbTextoCompleto = txtArea.value;
+    if (!blbTextoCompleto.trim()) {
+        statusDiv.className = 'error'; statusDiv.innerText = 'Por favor, pega los textos traídos de BLB.';
+        return;
+    }
+
+    const lineasBLB = blbTextoCompleto.split('\n').map(l => l.trim()).filter(l => l !== "");
+
+    Object.keys(mapaEstudio).forEach(id => {
+        const nodo = mapaEstudio[id]; nodo.textosCompletosBLB = [];
+        nodo.citas.forEach(cita => {
+            const textoEncontrado = lineasBLB.find(linea => linea.toLowerCase().includes(cita.toLowerCase()));
+            if (textoEncontrado) nodo.textosCompletosBLB.push(textoEncontrado);
+        });
+    });
+
+    let textoFinalConsolidado = principioGuardado;
+
+    Object.keys(mapaEstudio).forEach(id => {
+        const nodo = mapaEstudio[id];
+        textoFinalConsolidado += `${id}. ${nodo.textoOriginal}\n`;
+        if (nodo.textosCompletosBLB.length > 0) {
+            const versiculosUnicos = [...new Set(nodo.textosCompletosBLB)];
+            versiculosUnicos.forEach(vTxt => { textoFinalConsolidado += `   [BLB] ${vTxt}\n`; });
+        } else if (nodo.citas.length > 0) {
+            const citasUnicas = [...new Set(nodo.citas)];
+            textoFinalConsolidado += `   [Pendiente] Citas: ${citasUnicas.join(', ')}\n`;
+        }
+        textoFinalConsolidado += `\n`; 
+    });
+
+    // 🎯 INYECTOR DE CIERRE BLINDADO: Se acopla de forma directa al string final
+    textoFinalConsolidado += "[Box] How Would You Answer?\n\n";
+    textoFinalConsolidado += " As described in the Bible, what is meant by “comfort”?\n";
+    textoFinalConsolidado += " How can we comfort others?\n";
+    textoFinalConsolidado += " What can we do when we need comfort? [End of box]\n\n";
+    textoFinalConsolidado += "/* lo puedo hacer yo */";
+
+    try {
+        await navigator.clipboard.writeText(textoFinalConsolidado.trim());
+        statusDiv.className = 'success'; statusDiv.innerText = '¡Fase 2 Éxito! Cuestionario completo copiado al portapapeles.';
+        txtArea.value = ''; 
+        localStorage.removeItem('mapaEstudioActivo'); 
+        localStorage.removeItem('principioOrganizador'); 
+    } catch (err) {
+        statusDiv.className = 'error'; statusDiv.innerText = 'Error al escribir el resultado final.';
+    }
+}
+</script>
+

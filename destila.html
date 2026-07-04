@@ -105,18 +105,26 @@ async function generateMapAndExtractVerses() {
     text = text.replace(/\u00A0/g, ' '); 
     const lines = text.split('\n');
     const mapaEstudio = {};
-    let questionCounter = 0; 
+    let activeKey = null; // Llave activa flexible (puede ser "1", "14-15", etc.)
+    let todasLasCitasBLB = [];
     let principioOrganizador = "";
     
+    // Semáforos de control de bloques
+    let dentroDeRecuadro = false;
+    let dentroDeNota = false;
+
     const agrupadorCitasBLB = {};
 
     const lineasConTexto = lines.map(l => l.trim()).filter(l => l !== "");
     if (lineasConTexto.length >= 2) {
-        principioOrganizador = `${lineasConTexto[0]}\n${lineasConTexto[1]}\n\n`;
+        principioOrganizador = `${lineasConTexto}\n${lineasConTexto}\n\n`;
         localStorage.setItem('principioOrganizador', principioOrganizador);
     }
 
-    const pregRegex = /^\s*\d+[\d\s,.-]*(?:[a-z]\))?.*\?.*/i;
+    // REGEX ESTRICTA: Exige que inicie con número y lleve obligatoriamente punto o guion oficial posterior
+        // 🎯 CANDADO ESTRICTO: Exige un punto (.) o un guion (-) inmediatamente después del número inicial
+    const pregRegex = /^\s*\d+[\d\s,.-]*(?:[a-z]\))?[\s]*[.-]+\s*.*\?.*/i;
+
     const citaRegex = /\(([^)]+)\)/g;
 
     const traductorEspanolBLB = {
@@ -147,13 +155,26 @@ async function generateMapAndExtractVerses() {
         const lineClean = line.trim();
         if (!lineClean) return;
 
-        if (pregRegex.test(lineClean)) {
-            questionCounter++;
-            let preguntaTextoLimpio = lineClean.replace(/^\s*\d+[\d\s,.-]*(?:[a-z]\))?\s*/i, '');
-            mapaEstudio[questionCounter] = { textoOriginal: preguntaTextoLimpio, citas: [], textosCompletosBLB: [] };
+        // 🛡️ CONTROL DE CONTENEDORES (Evita procesar listas internas de recuadros o notas)
+        if (lineClean.toLowerCase().includes("[recuadro:]") || lineClean.toLowerCase().includes("tema")) { dentroDeRecuadro = true; }
+        if (lineClean.toLowerCase().includes("[fin de recuadro]")) { dentroDeRecuadro = false; return; }
+        if (lineClean.toLowerCase().includes("[nota:]")) { dentroDeNota = true; }
+        if (lineClean.toLowerCase().includes("[fin de nota]")) { dentroDeNota = false; return; }
+
+        // Si estamos dentro de un recuadro informativo, extraemos las citas pero NO creamos preguntas nuevas
+        const esPreguntaPotencial = pregRegex.exec(lineClean);
+        
+        if (esPreguntaPotencial && !dentroDeRecuadro && !dentroDeNota) {
+            // Normalizamos la llave del bloque (ej: "14,15" -> "14-15")
+            let numerosExtraidos = esPreguntaPotencial[1].replace(/\s+/g, '').replace(/,/g, '-');
+            activeKey = numerosExtraidos;
+
+            let preguntaTextoLimpio = lineClean.replace(/^\s*\d+[\d\s,.-]*(?:[a-z]\))?[\s.-]+\s*/i, '');
+            mapaEstudio[activeKey] = { textoOriginal: preguntaTextoLimpio, citas: [], textosCompletosBLB: [] };
         }
 
-        if (questionCounter > 0) {
+        // Si hay una sección activa de cuestionario, capturamos los paréntesis
+        if (activeKey !== null) {
             citaRegex.lastIndex = 0;
             const parentesisEncontrados = lineClean.match(citaRegex);
             
@@ -164,36 +185,29 @@ async function generateMapAndExtractVerses() {
                     let contenidoBajo = contenidoParentesis.toLowerCase();
                     if (contenidoBajo.includes("picture") || contenidoBajo.includes("read") || 
                         contenidoBajo.includes("nota") || contenidoBajo.includes("imagen") || 
-                        contenidoBajo.includes("recuadro") || contenidoBajo.includes("leyenda")) return;
+                        contenidoBajo.includes("leyenda")) return;
                     
                     const partesCitas = contenidoParentesis.split(';');
                     partesCitas.forEach(parte => {
                         let fragmento = parte.trim();
                         
-                        // 🎯 ARREGLO DE RANGOS VERBALES ANTES DE LA CAPTURA ESTRUCTURAL
+                        // Normalización de rangos textuales
                         fragmento = fragmento
-                            .replace(/\s+a\s+(\d+)/i, '-$1') // Convierte "4 a 8" -> "4-8"
-                            .replace(/(\d+)[a-z]\b/i, '$1'); // Remueve letras adjuntas ("8a" -> "8")
+                            .replace(/[ª°º]/g, '')
+                            .replace(/\b(?:a\s+los|de)\b/gi, '')
+                            .replace(/\s+a\s+(\d+)/i, '-$1')     
+                            .replace(/(\d+)[a-z]\b/i, '$1');     
 
-                        // Expresión regular que tolera el formato nativo completo en español
                         const estructuraMatch = fragmento.match(/^(.*?)\s+(?:capítulo|cap\.?)\s*(\d+)\s*(?:versículos|versículo|vers?\.?)?\s*([\d\s,.-]+)/i);
 
                         if (estructuraMatch) {
-                            // Extraemos las capturas usando índices seguros estricto de JS
-                            let rawLibro = estructuraMatch[1];
-                            let capituloBase = estructuraMatch[2];
-                            let rawVersiculos = estructuraMatch[3];
-
-                            // Limpiamos los caracteres ordinales e intermedios del texto del libro
-                            let libroTextoCrudo = rawLibro.toLowerCase()
-                                .replace(/[ª°º]/g, '')
-                                .replace(/\b(?:a\s+los|de)\b/g, '')
-                                .replace(/\s+/g, ' ')
-                                .trim();
+                            let libroTextoCrudo = estructuraMatch[1].trim().toLowerCase();
+                            let capituloBase = estructuraMatch[2].trim();
+                            let versiculosCapturados = estructuraMatch[3].trim();
 
                             if (libroTextoCrudo === "compare" || libroTextoCrudo === "lea" || libroTextoCrudo === "vea") return;
 
-                            let cadenaVersiculos = rawVersiculos.replace(/\s+/g, ''); 
+                            let cadenaVersiculos = versiculosCapturados.replace(/\s+/g, ''); 
                             let libroEstandar = "";
                             
                             if (traductorEspanolBLB[libroTextoCrudo]) {
@@ -218,7 +232,8 @@ async function generateMapAndExtractVerses() {
                                     let verLimpio = ver.trim();
                                     if (!verLimpio) return;
                                     
-                                    mapaEstudio[questionCounter].citas.push(`${libroEstandar} ${capituloBase}:${verLimpio}`);
+                                    // Guardamos la cita estructurada vinculada a la llave compuesta activa
+                                    mapaEstudio[activeKey].citas.push(`${libroEstandar} ${capituloBase}:${verLimpio}`);
                                     agrupadorCitasBLB[llaveAgrupadora].push(verLimpio);
                                 });
                             }
@@ -245,7 +260,7 @@ async function generateMapAndExtractVerses() {
 
     const blbSearchString = bloquesCitasFormateados.join('; ');
 
-    console.log("Cadena unificada final para BLB:", blbSearchString);
+    console.log("Cadena perfecta unificada para BLB:", blbSearchString);
 
     if (navigator.clipboard && window.isSecureContext) {
         try {
@@ -262,14 +277,13 @@ async function generateMapAndExtractVerses() {
         textAreaTemporal.select();
         try {
             document.execCommand('copy');
-            statusDiv.className = 'success'; statusDiv.innerText = '¡Fase 1 Éxito! Cadena copiada para BLB.';
-            txtArea.value = '';
-        } catch (err) {
-            statusDiv.className = 'error'; statusDiv.innerText = 'Error al copiar la cadena.';
-        }
-        document.body.removeChild(textAreaTemporal);
-    }
+statusDiv.className = 'success'; 
+statusDiv.innerText = '¡Fase 1 Éxito! Cadena copiada para BLB.';
+txtArea.value = '';} 
+catch (err) {statusDiv.className = 'error'; 
+statusDiv.innerText = 'Error al copiar la cadena.';
 }
+document.body.removeChild(textAreaTemporal);}}
 
 
 

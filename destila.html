@@ -86,30 +86,37 @@ const bookMapping = {
     "romans": "Rom", "rom": "Rom", "matthew": "Mat", "mat": "Mat",
     "1 thessalonians": "1Th", "1 th": "1Th", "2 corinthians": "2Co", "2 cor": "2Co",
     "acts": "Act", "1 kings": "1Ki", "2 timothy": "2Ti", "habakkuk": "Hab",
-    "james": "Jam", "ecclesiastes": "Ecc", "isaiah": "Isa", "proverbs": "Pro",
+    "james": "Jam", "jam": "Jam", "ecclesiastes": "Ecc", "ecc": "Ecc", 
+    "isaiah": "Isa", "isa": "Isa", "proverbs": "Pro", "pro": "Pro",
     "1 john": "1Jn", "1 jn": "1Jn", "gén": "Gen", "éx": "Exo", "luc": "Luk", "mar": "Mrk",
-    "1 peter": "1Pe", "1 pet": "1Pe", "john": "Jhn", "jn": "Jhn"
+    "1 peter": "1Pe", "1 pet": "1Pe", "john": "Jhn", "jn": "Jhn",
+    "psalm": "Psa", "ps": "Psa", "psa": "Psa", "1 corinthians": "1Co", "1 cor": "1Co",
+    "colossians": "Col", "col": "Col", "amos": "Amo", "amo": "Amo", "malachi": "Mal", "mal": "Mal"
 };
+
+
 
 async function generateMapAndExtractVerses() {
     const statusDiv = document.getElementById('status');
     const txtArea = document.getElementById('sourceText');
-    statusDiv.className = ''; statusDiv.innerText = 'Generando mapa relacional...';
+    statusDiv.className = ''; 
+    statusDiv.innerText = 'Generando mapa relacional...';
 
     let text = txtArea.value;
     if (!text.trim()) {
-        statusDiv.className = 'error'; statusDiv.innerText = 'Por favor, pega primero el artículo en el cuadro de texto.';
+        statusDiv.className = 'error'; 
+        statusDiv.innerText = 'Por favor, pega primero el artículo en el cuadro de texto.';
         return;
     }
     
-    text = text.replace(/\u00A0/g, ' '); 
+    // Normaliza espacios web invisibles y guiones especiales de rangos (ej. 13:4-8)
+    text = text.replace(/\u00A0/g, ' ').replace(/\u2010|\u2011|\u2012|\u2013|\u2014/g, '-'); 
     const lines = text.split('\n');
     const mapaEstudio = {};
     let questionCounter = 0; 
     let todasLasCitasBLB = [];
     let principioOrganizador = "";
 
-    // 🔍 CAPTURA SEGURA: Buscamos las dos primeras líneas reales que tengan texto
     const lineasConTexto = lines.map(l => l.trim()).filter(l => l !== "");
     if (lineasConTexto.length >= 2) {
         principioOrganizador = `${lineasConTexto[0]}\n${lineasConTexto[1]}\n\n`;
@@ -117,11 +124,15 @@ async function generateMapAndExtractVerses() {
     }
 
     const pregRegex = /(?:(?:Question|Pregunta)\s*\d+)/i;
-    const citaRegex = /\(([^)]+)\)/g;
+
+    // Regex ultra-preciso para capturar citas en cualquier parte del texto
+    const extractorRegex = /(?:\b\d?\s*[a-zA-ZáéíóúÁÉÍÓÚñÑ]+)\s+\d+:\d+(?:[\s,-]\d+)*(?:\s*;\s*(?:\b\d?\s*[a-zA-ZáéíóúÁÉÍÓÚñÑ]+)?\s+\d+:\d+(?:[\s,-]\d+)*)*/g;
 
     lines.forEach(line => {
         const lineClean = line.trim();
         if (!lineClean) return;
+
+        if (lineClean.toLowerCase().includes("picture") || lineClean.toLowerCase().includes("[box]")) return;
 
         if (pregRegex.test(lineClean)) {
             questionCounter++;
@@ -129,45 +140,69 @@ async function generateMapAndExtractVerses() {
             mapaEstudio[questionCounter] = { textoOriginal: preguntaTextoLimpio, citas: [], textosCompletosBLB: [] };
         }
 
-        if (questionCounter > 0) {
-            const parentesisEncontrados = lineClean.match(citaRegex);
-            if (parentesisEncontrados) {
-                parentesisEncontrados.forEach(parentesis => {
-                    let contenidoParentesis = parentesis.replace(/[()]/g, '').trim();
-                    if (contenidoParentesis.toLowerCase().includes("picture") || contenidoParentesis.toLowerCase().includes("read")) return;
-                    
-                    const partesCitas = contenidoParentesis.split(';');
-                    partesCitas.forEach(parte => {
-                        let fragmento = parte.trim();
-                        let libroDetectado = ""; let libroEstandar = "";
+        // 🌟 CAPTURA GLOBAL INDEPENDIENTE
+        const matches = lineClean.match(extractorRegex);
+        if (matches) {
+            matches.forEach(rawBlock => {
+                const chunks = rawBlock.split(';');
+                let lastKnownBook = "";
 
-                        for (const [key, value] of Object.entries(bookMapping)) {
-                            const runRegex = new RegExp(`^${key}\\b`, 'i');
-                            if (runRegex.test(fragmento)) { libroDetectado = key; libroEstandar = value; break; }
+                chunks.forEach(chunk => {
+                    let fragment = chunk.trim();
+                    let libroDetectado = ""; 
+                    let libroEstandar = "";
+
+                    for (const [key, value] of Object.entries(bookMapping)) {
+                        const runRegex = new RegExp(`^${key}\\b`, 'i');
+                        if (runRegex.test(fragment)) { 
+                            libroDetectado = key; 
+                            libroEstandar = value; 
+                            lastKnownBook = value; 
+                            break; 
                         }
+                    }
 
-                        if (libroEstandar) {
-                            let numerosCita = fragmento.replace(new RegExp(`^${libroDetectado}\\b`, 'i'), '').trim();
-                            const capMatch = numerosCita.match(/^(\d+):/);
-                            if (capMatch && capMatch[1]) {
-                                const capituloBase = capMatch[1];
-                                const versiculosSeparados = numerosCita.replace(/^\d+:/, '').split(',');
-                                versiculosSeparados.forEach(ver => {
-                                    let verLimpio = ver.trim(); if (!verLimpio) return;
-                                    let citaFormateada = verLimpio.includes(':') ? `${libroEstandar} ${verLimpio}` : `${libroEstandar} ${capituloBase}:${verLimpio}`;
+                    if (!libroEstandar && lastKnownBook) {
+                        libroEstandar = lastKnownBook;
+                    }
+
+                    if (libroEstandar) {
+                        let numerosCita = libroDetectado ? fragment.replace(new RegExp(`^${libroDetectado}\\b`, 'i'), '').trim() : fragment;
+                        
+                        // Limpieza de caracteres de cierre accidentales
+                        numerosCita = numerosCita.replace(/[)]/g, '').trim();
+
+                        const capMatch = numerosCita.match(/^(\d+):/);
+                        if (capMatch) {
+                            const capituloBase = capMatch[1];
+                            const versiculosSeparados = numerosCita.replace(/^\d+:/, '').split(',');
+                            
+                            versiculosSeparados.forEach(ver => {
+                                let verLimpio = ver.trim(); 
+                                if (!verLimpio) return;
+                                
+                                let citaFormateada = verLimpio.includes(':') 
+                                    ? `${libroEstandar} ${verLimpio}` 
+                                    : `${libroEstandar} ${capituloBase}:${verLimpio}`;
+                                    
+                                // Guarda en el mapa relacional SOLO si pertenece a una pregunta activa
+                                if (questionCounter > 0 && mapaEstudio[questionCounter]) {
                                     mapaEstudio[questionCounter].citas.push(citaFormateada);
-                                    todasLasCitasBLB.push(citaFormateada);
-                                });
-                            }
+                                }
+                                
+                                // 🔥 SE CORRIGE: Se agrega SIEMPRE a la lista global de BLB sin importar la línea
+                                todasLasCitasBLB.push(citaFormateada);
+                            });
                         }
-                    });
+                    }
                 });
-            }
+            });
         }
     });
 
-    if (Object.keys(mapaEstudio).length === 0) {
-        statusDiv.className = 'error'; statusDiv.innerText = 'No se estructuró ninguna pregunta. Revisa el formato.';
+    if (todasLasCitasBLB.length === 0) {
+        statusDiv.className = 'error'; 
+        statusDiv.innerText = 'No se extrajeron citas bíblicas. Revisa el formato.';
         return;
     }
 
@@ -177,12 +212,19 @@ async function generateMapAndExtractVerses() {
 
     try {
         await navigator.clipboard.writeText(blbSearchString);
-        statusDiv.className = 'success'; statusDiv.innerText = '¡Fase 1 Éxito! Cadena copiada para BLB.';
+        statusDiv.className = 'success'; 
+        statusDiv.innerText = '¡Fase 1 Éxito! Cadena copiada para BLB.';
         txtArea.value = ''; 
     } catch (err) {
-        statusDiv.className = 'error'; statusDiv.innerText = 'Error al escribir en el portapapeles.';
+        statusDiv.className = 'error'; 
+        statusDiv.innerText = 'Error al escribir en el portapapeles.';
     }
 }
+
+
+
+
+
 
 async function matchBLBTextWithMap() {
     const statusDiv = document.getElementById('status');

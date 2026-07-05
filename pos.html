@@ -80,11 +80,11 @@
     max-width: 1100px !important; /* Acota el ancho para que no se desparrame en pantallas grandes */
     margin-left: auto !important;  /* El truco de márgenes automáticos izquierdo y derecho */
     margin-right: auto !important; /* logra que todo el bloque se clave en el centro */
-    margin-top: 10px !important;   /* 🛠️ Reducido de 15px a 10px para subir más la bolsa */
-    margin-bottom: 10px !important;
+    margin-top: 15px !important;
+    margin-bottom: 15px !important;
     
     background: white !important; 
-    padding: 10px 20px !important; /* 🛠️ AJUSTE CRÍTICO: 10px arriba/abajo (antes 20px) y 20px a los lados */
+    padding: 20px !important; 
     border-radius: 14px !important; /* Esquinas más suaves en sintonía con tus botones */
     box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; 
     border: 1px solid #dfe4ea !important;
@@ -97,8 +97,8 @@
     align-items: center !important;
     font-size: 1.25rem !important;
     color: #2d3436 !important;
-    margin-bottom: 10px !important; /* 🛠️ Reducido de 15px a 10px para recortar aire */
-    padding-bottom: 6px !important;  /* 🛠️ Reducido de 8px a 6px */
+    margin-bottom: 15px !important;
+    padding-bottom: 8px !important;
     border-bottom: 3px solid #00b894 !important; /* Mantenemos tu verde identitario */
     text-transform: uppercase !important;
     letter-spacing: 0.5px !important;
@@ -108,14 +108,13 @@
 #lista-bolsa {
     width: 100% !important;
     margin: 0 auto !important;
-    padding: 2px 0 !important; /* 🛠️ Reducido el padding interno */
+    padding: 5px 0 !important;
     
     /* Nuevas propiedades para el scroll */
-    max-height: 165px !important;    /* 🛠️ COMPACTADO: Altura ideal fija para notebook */
+    max-height: 240px !important;    /* Ajusta este alto (aprox. 3 o 4 ítems visibles a la vez) */
     overflow-y: auto !important;     /* Activa el scroll vertical si el contenido supera el max-height */
     overflow-x: hidden !important;   /* Evita cualquier scroll horizontal parásito */
 }
-
 /* Personalización de la barra de scroll para #lista-bolsa (Chrome/Safari/Edge) */
 #lista-bolsa::-webkit-scrollbar {
     width: 6px !important;
@@ -134,7 +133,7 @@
     display: block !important;
     clear: both !important;
     border-bottom: 2px solid #f1f2f6 !important;
-    padding: 6px 0 !important; /* 🛠️ Reducido de 10px a 6px para compactar cada ítem */
+    padding: 10px 0 !important;
 }
 
 .item-bolsa {
@@ -142,13 +141,12 @@
     display: flex !important; 
     justify-content: space-between !important; /* Separa el nombre a la izq y el precio/X a la der */
     align-items: center !important;
-    margin-bottom: 3px !important; /* 🛠️ Reducido de 5px a 3px */
-    font-size: 1.05rem !important; /* 🛠️ Ajustado sutilmente de 1.1rem a 1.05rem */
+    margin-bottom: 5px !important;
+    font-size: 1.1rem !important; 
     font-weight: 500 !important;
     line-height: 1.2 !important;
-    padding: 4px 0 !important;    /* 🛠️ Reducido de 6px a 4px */
+    padding: 6px 0 !important;
 }
-
 
 /* Estado visual cuando la bolsa no tiene productos cargados aún */
 #lista-bolsa:empty::after {
@@ -162,37 +160,23 @@
     font-size: 15px !important;
 }
 
-/* 🛠️ BLOQUE UNIFICADO Y COMPACTADO PARA EL TOTAL */
-/* 🛠️ BLOQUE DE CONTROL TOTAL UNIFICADO (Sin inconsistencias) */
-
+/* El Bloque del Total ($0) estético en su esquina de factura */
 #total-bolsa {
-    background-color: #f8f9fa !important; 
+    text-align: right !important;
+    font-size: 1.8rem !important; /* Tamaño imponente para control rápido */
+    font-weight: 900 !important;
     color: #2d3436 !important;
-    font-size: 1.5rem !important;         
-    font-weight: 900 !important;          
-    text-align: right !important;         
-    padding: 6px 15px !important;         /* Compacto arriba y abajo */
-    border-radius: 8px !important;
-    margin-top: 5px !important;           /* Pegado a la lista */
-    margin-bottom: 5px !important;        /* Espacio controlado antes del botón */
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.05) !important; 
-    border-top: 1px dashed #dfe4ea !important; 
-    box-sizing: border-box !important;
+    margin-top: 15px !important;
+    padding-top: 10px !important;
+    border-top: 1px dashed #dfe4ea !important; /* Línea discontinua muy limpia */
 }
-
-#btn-enviar {
-    width: 100% !important;              /* Asegura que cubra el ancho total */
-    height: 38px !important;             /* 💎 CRÍTICO: Forzamos una altura delgada y fija para notebook */
-    padding: 0px 12px !important;        /* 💎 CRÍTICO: Cero padding vertical para que no se infle */
-    margin-top: 2px !important;          
-    margin-bottom: 8px !important;       /* Despeja el camino de forma controlada hacia el contador */
-    font-weight: bold !important;
-    font-size: 1.1rem !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;  /* Centra el texto "ENVIAR A COCINA" dentro de los 38px */
-    box-sizing: border-box !important;
-}
+        
+        #btn-enviar {
+            margin-top: 5px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            padding: 12px;
+        }
         
         /* Modal */
         #modal { 
@@ -437,7 +421,7 @@
             white-space: nowrap; 
         }
 
-      /*  #total-bolsa {
+        #total-bolsa {
             background-color: #f8f9fa; 
             color: #2d3436;
             font-size: 1.8rem;         
@@ -447,7 +431,7 @@
             border-radius: 8px;
             margin-top: 10px;
             box-shadow: inset 0 0 5px rgba(0,0,0,0.05); 
-        } 
+        }
 
         * --- TARJETAS DE ESPERA / PEDIDOS ACTIVOS --- */
 /* --- TARJETAS DE ESPERA / PEDIDOS ACTIVOS --- */
@@ -464,17 +448,12 @@
     background-color: #f8f9fa !important; 
     border: 1px dashed #ced4da !important; 
     border-radius: 8px !important;
-    overflow-x: hidden !important;   
-
-    /* 💎 ALTURA CALIBRADA PARA EL ESTADO DE COCINA */
-    height: 200px !important;        /* Forzamos el alto exacto para que entren las dos filas con sus etiquetas */
-    max-height: 200px !important;    
-    overflow-y: auto !important;     /* El scroll se activa de forma limpia si hay más filas */
+    
+    /* 🛠️ PROTECCIÓN HORA PUNTA: Evita que crezca infinitamente hacia abajo */
+    max-height: 140px !important;    /* Altura ideal para aprox. 2 filas de tickets */
+    overflow-y: auto !important;     /* Activa scroll vertical interno si se satura */
+    overflow-x: hidden !important;   /* Evita movimientos laterales parásitos */
 }
-
-
-
-
 
 /* Bloque 2: Por entregar / Cobrar */
 #contenedor-pedidos-cobro {
@@ -625,8 +604,6 @@ div#origen-container.origen-container label.btn-origen:has(input:checked) {
         overflow-y: auto !important;
     }
 
-    
-
     #pos-side {
         width: 100% !important;
         min-height: 100vh !important;
@@ -760,7 +737,7 @@ div:has(> #payment-options-container) {
     <div class="fila-control-superior">
         <div style="flex: 1.0; position: relative; display: flex; align-items: center; gap: 8px;">
             <input type="text" id="input-cliente" list="sugerencias-clientes" autocomplete="off" placeholder="Nombre del Cliente..." 
-       style="width: 100%; padding: 0px 10px; border-radius: 5px; border: none; font-size: 16px; color: #333; height: 32px;">
+                   style="width: 100%; padding: 10px; border-radius: 5px; border: none; font-size: 16px; color: #333;">
                    <datalist id="sugerencias-clientes">
                     </datalist>
                 
@@ -814,7 +791,7 @@ div:has(> #payment-options-container) {
         <div style="display: flex; align-items: center; background: #f1f2f6; padding: 12px; border-radius: 8px; flex: 1.2; border: 2px solid #dfe4ea;">
             <label style="font-weight: 900; font-size: 1.2rem; color: #2d3436; margin-right: 5px; white-space: nowrap;">+/- $</label>
             <input type="number" id="ajuste-global" value="0" oninput="renderBolsa()" 
-                   style="width: 100%; border: none; background: transparent; font-size: 1.3rem; font-weight: 900; outline: none; text-align: right; color: #d63031; padding: 0px; margin: 0px; height: 28px;">
+                   style="width: 100%; border: none; background: transparent; font-size: 1.5rem; font-weight: 900; outline: none; text-align: right; color: #d63031;">
         </div>
 
         <button class="btn" id="btn-enviar" 

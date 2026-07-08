@@ -908,16 +908,7 @@ const capitalizar = (txt) => {
         )
         .join(" ");
     };
-/* const capitalizar = (txt) => {
- txt  = txt ?? "";
-    return txt
-        .split(" ")
-        .map(p =>
-            p.charAt(0).toUpperCase() +
-            p.slice(1)
-        )
-        .join(" ");
-    }; */
+
 
 const ESTADOS = {
   PENDIENTE: 'PENDIENTE', // Reemplaza NUEVO por PENDIENTE
@@ -1226,7 +1217,8 @@ texto = texto.replace(buscarPalabras, (match) => correccionesVoz[match]);
         }
         
     };
-//console.log("pedido Activo salida toggle",pedidoActivo.cliente);
+
+
     // Encendemos el motor de grabación
     reconocimientoActivo.start();
     

@@ -869,7 +869,7 @@ let pedidosEnEspera = (() => {
 })();
 
 // Las demás variables globales que no se guardan en disco van justo abajo:
-let idsPedidosVendidosInicio = [];
+
 let idsPedidosVendidosDinamico = [];
 
 document.getElementById('ajuste-global')?.addEventListener('input', renderBolsa);
@@ -1083,13 +1083,13 @@ async function iniciarApp() {
     // Limpieza de deuda técnica (Ejecuta esto una vez y luego bórralo)
     localStorage.removeItem('control_estados_terminales');
     // 1. Carga inicial de datos de referencia (Ventas)
-    await cargarHistorialVentasInicial();
+    await cargarHistorialVentasInicial_oper();
     sincronizadorPedidos();
 
     // El "Latido" automático que gestiona el refresco
     setInterval(async () => {
         console.log("🕒 Verificando refresco de ventas...");
-        await cargarHistorialVentasInicial(); 
+        await cargarHistorialVentasInicial_oper(); 
     }, 15 * 60 * 1000); // 15 minutos exactos
 } // ◄ Cierre perfecto de iniciarApp
 
@@ -2377,6 +2377,7 @@ function renderBolsa() {
     if (txtTotal) txtTotal.innerText = `Total: $${totalFinal}`;
 
     // / Visibilidad de botones
+    console.log("pedidoActivo en renderBolsa ",pedidoActivo);
 const tieneItems = pedidoActivo.items.length > 0;
 ['btn-enviar', 'btn-cobrar', 'btn-limpiar-bolsa'].forEach(id => {
     const btn = document.getElementById(id);
@@ -2404,7 +2405,7 @@ async function enviarCocina(limpiarInterfaz = true) {
   const ajusteGlobal = parseFloat(document.getElementById('ajuste-global')?.value) || 0;
 
   const cliente = (inputNombre?.value.trim()) || "Mostrador";
-
+console.log("pedidoActivo ",pedidoActivo);
   if (!pedidoActivo.items || pedidoActivo.items.length === 0) {
     Swal.fire("Bolsa vacía", "No hay productos para procesar", "warning");
     return;
@@ -3171,25 +3172,38 @@ function getTime() {
 function renderTickets() {
   const contenedor = document.getElementById("contenedor-pedidos-activos");
   if (!contenedor) return;
-  // ================================================================
-  // FILTRO DEFINITIVO: Removemos pedidos terminados de la bandeja visual
-  // ================================================================
-  /*if (typeof pedidosEnEspera !== 'undefined' && Array.isArray(pedidosEnEspera)) {
-      pedidosEnEspera = pedidosEnEspera.filter(p => 
-          p.estado !== "FINALIZADO" && 
-          p.estado !== "ENTREGADO"
-      );
+
+  // 1. Calcular la sumatoria de montos PENDIENTES DE PAGO estrictamente
+  let totalPendienteMonto = 0;
+  if (typeof pedidosEnEspera !== 'undefined' && Array.isArray(pedidosEnEspera)) {
+      pedidosEnEspera.forEach(p => {
+          // 🛡️ FILTRO OPERATIVO: Si el pedido YA ESTÁ PAGADO, no debe sumar a la deuda de "Pendientes"
+          if (p.pagado === true || String(p.pagoEstado).toUpperCase() === "PAGADO") {
+              return; // Saltamos este ticket, no acumula al monto rojo
+          }
+
+          // Sumamos únicamente los que están marcados como "DEBE"
+          const montoPedido = parseFloat(p.total) || parseFloat(p.totalCobradoOrden) || 0;
+          totalPendienteMonto += montoPedido;
+      });
   }
-  // ================================================================
 
-  // Si después del filtro la bandeja está vacía, limpiamos la pantalla y salimos de inmediato
-  if (!pedidosEnEspera || pedidosEnEspera.length === 0) {
-    contenedor.innerHTML = ""; 
-    return []; 
-  }*/
+  // 2. Actualizar dinámicamente el contenedor visual "resumen-caja"
+  const contenedorCaja = document.getElementById("resumen-caja");
+  if (contenedorCaja) {
+      const efec = parseFloat(contenedorCaja.getAttribute("data-efectivo")) || 0;
+      const tarj = parseFloat(contenedorCaja.getAttribute("data-tarjeta")) || 0;
+      const nuevoTotalCaja = efec + tarj;
 
-  // Ahora este log solo mostrará los pedidos que REALMENTE están pendientes (Preparando/Listo)
+      // Inyectamos el valor filtrado real en la pantalla
+      contenedorCaja.innerHTML = `Efectivo: $${efec} | Tarjeta: $${tarj} | <b style="color:red">Pendientes: $${totalPendienteMonto}</b><br><b>TOTAL: $${nuevoTotalCaja}</b>`;
+  }
+
   console.log('renderTickets pedidosEnEspera:', pedidosEnEspera);
+  // ... (Tu renderizado de tarjetas HTML continúa igual abajo)
+
+
+
 console.table(pedidosEnEspera.map(p => ({ id: p.idGrupo, cliente: p.cliente })));
 
 console.log("renderTickets ejecutado:", getTime());
@@ -3408,6 +3422,164 @@ async function cargarHistorialVentasInicial0() {
         console.error("❌ No se pudo precargar el historial de ventas:", e.message);
     }
 }
+// Variables globales de control operativo
+let idsPedidosVendidosInicio = [];
+let ventasPorCategoriaTurno = {}; 
+
+async function cargarHistorialVentasInicial_oper() {
+    try {
+        console.log("📥 Cargando historial de Ventas para filtro continuo...");
+        const urlVentasBase = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAifMs_lFEZSqP-RkeHjLZ_dvp7SGfL55PdM18bviZ0QbYLozodJrAWi5IuoOSpeqMrgvR5oQkKU1d/pub?gid=119666070&single=true&output=tsv';
+        
+        const urlVentasTSV = `${urlVentasBase}&_cb=${Date.now()}`;
+        const respuesta = await fetch(urlVentasTSV);
+        
+        if (!respuesta.ok) {
+            throw new Error(`Error en el servidor de Google Sheets (Status: ${respuesta.status})`);
+        }
+
+        const textoVentas = await respuesta.text();
+        
+        if (textoVentas.includes("<!DOCTYPE html>") || textoVentas.includes("Error")) {
+            throw new Error("La respuesta recibida es una página HTML de error, no un archivo de datos TSV.");
+        }
+
+        const filasVentas = textoVentas.split(/\r?\n/).filter(f => f.trim() !== "");
+        
+        // --- 🕒 ALGORITMO: CÁLCULO DEL TURNO OPERATIVO (03:00 AM) ---
+        const ahora = new Date();
+        const inicioTurno = new Date(ahora);
+        inicioTurno.setHours(3, 0, 0, 0);
+
+        if (ahora.getHours() < 3) {
+            inicioTurno.setDate(inicioTurno.getDate() - 1);
+        }
+
+       // El fin del turno es exactamente 23 horas y 59 minutos después del inicio
+const finTurno = new Date(inicioTurno);
+finTurno.setHours(inicioTurno.getHours() + 23, 59, 59, 999);
+
+// Conversión a Timestamps (Números)
+const timestampInicioTurno = inicioTurno.getTime();
+const timestampFinTurno = finTurno.getTime();
+
+// Visualización en consola para depuración
+console.log("Inicio Turno ISO:", inicioTurno.toISOString());
+console.log("Fin Turno ISO:", finTurno.toISOString());
+        // -------------------------------------------------------------
+
+                let efectivo = 0;
+        let tarjeta = 0;
+        const pedidosProcesadosParaMonto = {};
+        const todosLosIdsFinalizados = [];
+        const categoriasTemporales = {};
+
+        filasVentas.slice(1).forEach(fila => {
+            if (!fila.trim()) return; // Ignorar líneas totalmente vacías
+            const columnas = fila.split("\t");
+            if (columnas.length < 14) return; // Protección por si la fila está incompleta
+            
+            // 🎯 MAPEO DE ÍNDICES RESTAURADO AL 100% SEGÚN TU HOJA
+            const fechaString       = columnas[0]; 
+            const clienteEncontrado  = columnas[1];
+            const pagoEncontrado     = columnas[8] ? columnas[8].trim().toUpperCase() : "";
+            const subtotalItem       = parseFloat(columnas[9]) || 0; 
+            const totalCobradoOrden  = parseFloat(columnas[11]) || 0; 
+            const categoriaItem      = columnas[12];
+            const idEncontrado       = columnas[13] ? columnas[13].trim() : "";
+            const estadoEncontrado   = columnas[14] ? columnas[14].trim().toUpperCase() : "";
+
+            if (!idEncontrado || !fechaString) return;
+
+            // --- 🛠️ PARSER DE FECHA BLINDADO (Evita errores de inversión Mes/Día) ---
+            let timestampPedido = NaN;
+            try {
+                const partesEspacio = fechaString.trim().split(/[\s,]+/);
+                const parteFecha = partesEspacio[0]; 
+                const parteHora = partesEspacio[1];  
+
+                const componentesFecha = parteFecha.replace(/\./g, '').split('/');
+                const dia = parseInt(componentesFecha[0], 10);
+                const mes = parseInt(componentesFecha[1], 10) - 1; 
+                const anio = parseInt(componentesFecha[2], 10);
+
+                const componentesHora = parteHora.split(':');
+                let hora = parseInt(componentesHora[0], 10);
+                const minuto = parseInt(componentesHora[1], 10);
+                const segundo = parseInt(componentesHora[2] || "0", 10);
+
+                const esPM = /p\s*m/i.test(fechaString);
+                const esAM = /a\s*m/i.test(fechaString);
+                if (esPM && hora < 12) hora += 12;
+                if (esAM && hora === 12) hora = 0;
+
+                const datePedido = new Date(anio, mes, dia, hora, minuto, segundo);
+                timestampPedido = datePedido.getTime();
+            } catch (err) {
+                return;
+            }
+
+            if (isNaN(timestampPedido)) return;
+
+            // 🛡️ FILTRO TEMPORAL: Tu rango con holgura (03:00 AM)
+            if (timestampPedido < timestampInicioTurno || timestampPedido > timestampFinTurno) {
+                return; 
+            }
+
+            // 1. Recolección masiva de IDs Finalizados (Escudo probado)
+            if (estadoEncontrado === "FINALIZADO") {
+                const idLimpio = String(idEncontrado).replace(/\D/g, '').substring(0, 11);
+                todosLosIdsFinalizados.push(idLimpio);
+            }
+
+            // 2. Acumulación por Categorías (Fila por fila de forma atómica para todo el turno)
+            if (categoriaItem) {
+                const catLimpia = categoriaItem.trim();
+                if (!categoriasTemporales[catLimpia]) {
+                    categoriasTemporales[catLimpia] = 0;
+                }
+                categoriasTemporales[catLimpia] += subtotalItem;
+            }
+
+            // 3. Control de sumatoria monetaria de la caja general (Solo primera fila por ID)
+            if (!pedidosProcesadosParaMonto[idEncontrado]) {
+                pedidosProcesadosParaMonto[idEncontrado] = {
+                    procesado: true,
+                    cliente: clienteEncontrado ? clienteEncontrado.trim() : "SIN NOMBRE"
+                };
+
+                if (pagoEncontrado === "EFECTIVO") {
+                    efectivo += totalCobradoOrden;
+                } else if (pagoEncontrado === "TARJETA" || pagoEncontrado === "TRANSFERENCIA") {
+                    tarjeta += totalCobradoOrden;
+                }
+            }
+        });
+
+        // ASIGNACIONES GLOBALES AL FINALIZAR EL RECORRIDO COMPLETO
+        idsPedidosVendidosInicio = [...new Set(todosLosIdsFinalizados)];
+        ventasPorCategoriaTurno = categoriasTemporales; 
+
+        console.log(`✅ Historial sincronizado: ${idsPedidosVendidosInicio.length} pedidos únicos FINALIZADOS.`);
+        console.log("Categorías calculadas del turno:", ventasPorCategoriaTurno);
+
+        // Despliegue visual en la caja general
+        const totalCaja = efectivo + tarjeta;
+        const contenedorCaja = document.getElementById("resumen-caja");
+        if (contenedorCaja) {
+            contenedorCaja.innerHTML = `Efectivo: $${efectivo} | Tarjeta: $${tarjeta} | <b style="color:red">Pendientes: $0</b><br><b>TOTAL: $${totalCaja}</b>`;
+            
+            contenedorCaja.setAttribute("data-efectivo", efectivo);
+            contenedorCaja.setAttribute("data-tarjeta", tarjeta);
+        }
+
+
+
+    } catch (e) {
+        console.error("❌ No se pudo precargar el historial de ventas por problemas de conexión:", e.message);
+    }
+}
+
 async function cargarHistorialVentasInicial() {
     try {
         console.log("📥 Cargando historial de Ventas para filtro continuo...");
@@ -3436,6 +3608,8 @@ async function cargarHistorialVentasInicial() {
         const idsProcesados = filasVentas.slice(1).map(fila => {
             const columnas = fila.split("\t");
             
+            const pagoEncontrado = columnas[8];
+            const montoEncontrado = columnas[11];
             const idEncontrado = columnas[13];
             const estadoEncontrado = columnas[14];
 
@@ -4242,6 +4416,49 @@ async function registrarVentaFinal() {
         localStorage.setItem("pedidosEnEspera", JSON.stringify(pedidosEnEspera));
         renderTickets();
     }
+    // ================================================================
+    // 📊 ACTUALIZACIÓN EN TIEMPO REAL DE LA CAJA POR TIPO DE PAGO (SECCIÓN 5.5)
+    // ================================================================
+    const montoCobradoDirecto = parseFloat(pedidoActivo.total) || 0;
+
+    if (montoCobradoDirecto > 0) {
+        // Capturamos el tipo de pago exactamente igual que en tu Sección 6
+        const metodoPagoNorm = String(tipoPago || "").toUpperCase().trim();
+
+        // 1. Inicializar el objeto global de categorías de pago si no existe
+        if (typeof ventasPorCategoriaTurno === 'undefined') {
+            ventasPorCategoriaTurno = {};
+        }
+        if (!ventasPorCategoriaTurno[metodoPagoNorm]) {
+            ventasPorCategoriaTurno[metodoPagoNorm] = 0;
+        }
+
+        // 2. Acumular el dinero directamente en su tipo de pago correspondiente (Métrica limpia)
+        ventasPorCategoriaTurno[metodoPagoNorm] += montoCobradoDirecto;
+        console.log("📊 Totales por Tipo de Pago actualizados:", ventasPorCategoriaTurno);
+
+        // 3. Renderizado reactivo inmediato en la interfaz de la caja general
+        const contenedorCaja = document.getElementById("resumen-caja");
+        if (contenedorCaja) {
+            let efec = parseFloat(contenedorCaja.getAttribute("data-efectivo")) || 0;
+            let tarj = parseFloat(contenedorCaja.getAttribute("data-tarjeta")) || 0;
+
+            // Clasificación visual para tu pantalla simplificada
+            if (metodoPagoNorm === "EFECTIVO") {
+                efec += montoCobradoDirecto;
+                contenedorCaja.setAttribute("data-efectivo", efec);
+            } else if (metodoPagoNorm === "TARJETA" || metodoPagoNorm === "TRANSFERENCIA" || metodoPagoNorm === "YAPE/PLIN") {
+                tarj += montoCobradoDirecto;
+                contenedorCaja.setAttribute("data-tarjeta", tarj);
+            }
+
+            const nuevoTotalCaja = efec + tarj;
+
+            // Pintamos el dinero líquido en el HTML al instante
+            contenedorCaja.innerHTML = `Efectivo: $${efec} | Tarjeta: $${tarj} | <b style="color:red">Pendientes: $0</b><br><b>TOTAL: $${nuevoTotalCaja}</b>`;
+        }
+    }
+    // ================================================================
 
     // --- 6. FORMAR FILAS PARA ENVIAR ---
     const filasParaEnviar = pedidoActivo.items.map((it, index) => {

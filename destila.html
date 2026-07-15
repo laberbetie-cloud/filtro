@@ -88,7 +88,7 @@ const bookMapping = {
     "exodus": "Exo", "éxodo": "Exo", "éx": "Exo", "exo": "Exo",
     "leviticus": "Lev", "levítico": "Lev", "lev": "Lev",
     "numbers": "Num", "números": "Num", "num": "Num",
-    "deuteronomy": "Deu", "deuteronomio": "Deu", "deu", "dt": "Deu",
+   "deuteronomy": "Deu", "deuteronomio": "Deu", "deu": "Deu", "dt": "Deu",
     "joshua": "Jos", "josué": "Jos", "jos": "Jos",
     "judges": "Jdg", "jueces": "Jdg", "jdg": "Jdg", "jue": "Jdg",
     "ruth": "Rth", "rut": "Rth", "rth": "Rth", "rut": "Rth",
@@ -157,21 +157,19 @@ const bookMapping = {
 async function generateMapAndExtractVerses() {
     const statusDiv = document.getElementById('status');
     const txtArea = document.getElementById('sourceText');
-    statusDiv.className = ''; 
-    statusDiv.innerText = 'Generando mapa relacional...';
+    statusDiv.className = ''; statusDiv.innerText = 'Generando mapa relacional...';
 
     let text = txtArea.value;
     if (!text.trim()) {
-        statusDiv.className = 'error'; 
-        statusDiv.innerText = 'Por favor, pega primero el artículo en el cuadro de texto.';
+        statusDiv.className = 'error'; statusDiv.innerText = 'Por favor, pega primero el artículo en el cuadro de texto.';
         return;
     }
     
-    // Normaliza espacios web invisibles y guiones especiales de rangos (ej. 13:4-8)
-    text = text.replace(/\u00A0/g, ' ').replace(/\u2010|\u2011|\u2012|\u2013|\u2014/g, '-'); 
+    text = text.replace(/\u00A0/g, ' '); 
     const lines = text.split('\n');
-    const mapaEstudio = {};
-    let questionCounter = 0; 
+    // 🛠️ CAMBIO 1: Cambiamos {} por un Array vacío para respetar el orden cronológico
+    const mapaEstudio = []; 
+    let currentQuestionKey = null; 
     let todasLasCitasBLB = [];
     let principioOrganizador = "";
 
@@ -181,88 +179,139 @@ async function generateMapAndExtractVerses() {
         localStorage.setItem('principioOrganizador', principioOrganizador);
     }
 
-    const pregRegex = /(?:(?:Question|Pregunta)\s*\d+)/i;
+    const pregRegex = /(?:Question|Pregunta)\s+(\d+(?:-\d+)?)/i;
 
-    // Regex ultra-preciso para capturar citas en cualquier parte del texto
-    const extractorRegex = /(?:\b\d?\s*[a-zA-ZáéíóúÁÉÍÓÚñÑ]+)\s+\d+:\d+(?:[\s,-]\d+)*(?:\s*;\s*(?:\b\d?\s*[a-zA-ZáéíóúÁÉÍÓÚñÑ]+)?\s+\d+:\d+(?:[\s,-]\d+)*)*/g;
+    // Generamos dinámicamente la lista de libros desde tu 'bookMapping'
+    const librosDisponibles = Object.keys(bookMapping)
+        .map(b => b.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'))
+        .join('|');
+
+    /* 
+       🛠️ REGEX MEJORADA:
+       Ahora acepta explícitamente combinaciones de números, comas, espacios y guiones tras los dos puntos.
+       Esto evita que "Hebrews 5:13, 14" se corte en el 13.
+    */
+    const extractorCitasRegex = new RegExp(`(?:\\b\\d?\\s*(?:${librosDisponibles}))\\s+\\d+:\\d+(?:(?:\\s*,\\s*|\\s*-\\s*)\\d+)*(?:\\s*;\\s*(?:(?:\\b\\d?\\s*(?:${librosDisponibles}))\\s+)?\\d+:\\d+(?:(?:\\s*,\\s*|\\s*-\\s*)\\d+)*)*`, 'gi');
 
     lines.forEach(line => {
         const lineClean = line.trim();
         if (!lineClean) return;
 
-        if (lineClean.toLowerCase().includes("picture") || lineClean.toLowerCase().includes("[box]")) return;
-
-        if (pregRegex.test(lineClean)) {
-            questionCounter++;
-            let preguntaTextoLimpio = lineClean.replace(/^\d+\.\s*/, '');
-            mapaEstudio[questionCounter] = { textoOriginal: preguntaTextoLimpio, citas: [], textosCompletosBLB: [] };
-        }
-
-        // 🌟 CAPTURA GLOBAL INDEPENDIENTE
-        const matches = lineClean.match(extractorRegex);
-        if (matches) {
-            matches.forEach(rawBlock => {
-                const chunks = rawBlock.split(';');
-                let lastKnownBook = "";
-
-                chunks.forEach(chunk => {
-                    let fragment = chunk.trim();
-                    let libroDetectado = ""; 
-                    let libroEstandar = "";
-
-                    for (const [key, value] of Object.entries(bookMapping)) {
-                        const runRegex = new RegExp(`^${key}\\b`, 'i');
-                        if (runRegex.test(fragment)) { 
-                            libroDetectado = key; 
-                            libroEstandar = value; 
-                            lastKnownBook = value; 
-                            break; 
-                        }
-                    }
-
-                    if (!libroEstandar && lastKnownBook) {
-                        libroEstandar = lastKnownBook;
-                    }
-
-                    if (libroEstandar) {
-                        let numerosCita = libroDetectado ? fragment.replace(new RegExp(`^${libroDetectado}\\b`, 'i'), '').trim() : fragment;
-                        
-                        // Limpieza de caracteres de cierre accidentales
-                        numerosCita = numerosCita.replace(/[)]/g, '').trim();
-
-                        const capMatch = numerosCita.match(/^(\d+):/);
-                        if (capMatch) {
-                            const capituloBase = capMatch[1];
-                            const versiculosSeparados = numerosCita.replace(/^\d+:/, '').split(',');
-                            
-                            versiculosSeparados.forEach(ver => {
-                                let verLimpio = ver.trim(); 
-                                if (!verLimpio) return;
-                                
-                                let citaFormateada = verLimpio.includes(':') 
-                                    ? `${libroEstandar} ${verLimpio}` 
-                                    : `${libroEstandar} ${capituloBase}:${verLimpio}`;
-                                    
-                                // Guarda en el mapa relacional SOLO si pertenece a una pregunta activa
-                                if (questionCounter > 0 && mapaEstudio[questionCounter]) {
-                                    mapaEstudio[questionCounter].citas.push(citaFormateada);
-                                }
-                                
-                                // 🔥 SE CORRIGE: Se agrega SIEMPRE a la lista global de BLB sin importar la línea
-                                todasLasCitasBLB.push(citaFormateada);
-                            });
-                        }
-                    }
-                });
+        const matchPregunta = lineClean.match(pregRegex);
+        if (matchPregunta) {
+            currentQuestionKey = matchPregunta[1]; 
+            let preguntaTextoLimpio = lineClean.replace(/^(?:Question|Pregunta)\s+\d+(?:-\d+)?\.\s*/i, '');
+            //mapaEstudio[currentQuestionKey] = { textoOriginal: preguntaTextoLimpio, citas: [], textosCompletosBLB: [] };
+            // 🛠️ CAMBIO 2: Empujamos un objeto al array incluyendo el identificador real como propiedad
+            mapaEstudio.push({
+                idPregunta: currentQuestionKey, // Guardamos aquí el "1-2", "3", "4", etc.
+                textoOriginal: preguntaTextoLimpio, 
+                citas: [], 
+                textosCompletosBLB: [] 
             });
         }
-    });
 
-    if (todasLasCitasBLB.length === 0) {
-        statusDiv.className = 'error'; 
-        statusDiv.innerText = 'No se extrajeron citas bíblicas. Revisa el formato.';
+        if (currentQuestionKey !== null) {
+            if (lineClean.toLowerCase().includes("picture") || lineClean.toLowerCase().includes("read") || lineClean.toLowerCase().includes("[image:]")) {
+                return;
+            }
+
+            const citasEncontradas = lineClean.match(extractorCitasRegex);
+            
+            if (citasEncontradas) {
+                citasEncontradas.forEach(citaCompleta => {
+                    const partesCitas = citaCompleta.split(';');
+                    let ultimoLibroEstandar = "";
+                    let ultimoCapituloBase = "";
+
+                    partesCitas.forEach(parte => {
+                        let fragmento = parte.trim();
+                        if (!fragmento) return;
+
+                        let libroDetectado = ""; 
+                        let libroEstandar = "";
+
+                        for (const [key, value] of Object.entries(bookMapping)) {
+                            const runRegex = new RegExp(`^\\b\\d?\\s*${key}\\b`, 'i');
+                            if (runRegex.test(fragmento)) { 
+                                libroDetectado = key; 
+                                libroEstandar = value; 
+                                break; 
+                            }
+                        }
+
+                        if (libroEstandar) {
+                            ultimoLibroEstandar = libroEstandar;
+                        } else {
+                            libroEstandar = ultimoLibroEstandar;
+                        }
+
+                        if (libroEstandar) {
+                            let numerosCita = fragmento;
+                            if (libroDetectado) {
+                                numerosCita = fragmento.replace(new RegExp(`^\\b\\d?\\s*${libroDetectado}\\b`, 'i'), '').trim();
+                            }
+
+                            // 🛠️ EXTRACCIÓN DEL CAPÍTULO: Capturamos el grupo [1] de manera segura
+                            const capMatch = numerosCita.match(/^(\d+):/);
+                            if (capMatch && capMatch[1]) {
+                                ultimoCapituloBase = capMatch[1]; 
+                            }
+
+                            if (ultimoCapituloBase) {
+                                let stringVersiculos = numerosCita.includes(':') ? numerosCita.replace(/^\d+:/, '') : numerosCita;
+                                
+                                // Separar los versículos por comas
+                                const versiculosSeparados = stringVersiculos.split(',');
+
+                                versiculosSeparados.forEach(ver => {
+                                    let verLimpio = ver.trim(); 
+                                    if (!verLimpio) return;
+
+                                    let citaFormateada = "";
+                                    
+                                    if (verLimpio.includes(':')) {
+                                        citaFormateada = `${libroEstandar} ${verLimpio}`;
+                                        const nuevoCap = verLimpio.match(/^(\d+):/);
+                                        if (nuevoCap && nuevoCap[1]) {
+                                            ultimoCapituloBase = nuevoCap[1];
+                                        }
+                                    } else {
+                                        // Usa el capítulo guardado en texto limpio
+                                        citaFormateada = `${libroEstandar} ${ultimoCapituloBase}:${verLimpio}`;
+                                    }
+// 🛠️ CAMBIO 3: Guardamos la cita en el ÚLTIMO elemento insertado en el Array
+                                mapaEstudio[mapaEstudio.length - 1].citas.push(citaFormateada);
+                                todasLasCitasBLB.push(citaFormateada);
+                                    /* mapaEstudio[currentQuestionKey].citas.push(citaFormateada);
+                                    todasLasCitasBLB.push(citaFormateada); */
+                                });
+                            }
+                        }
+                    });
+                });
+            }
+        }
+    });
+// 🛠️ CAMBIO 4: Validación de longitud de Array en lugar de llaves del objeto
+    if (mapaEstudio.length === 0) {
+        statusDiv.className = 'error'; statusDiv.innerText = 'No se estructuró ninguna pregunta. Revisa el formato.';
         return;
     }
+
+    // 🛠️ CAMBIO 5: Limpieza de duplicados adaptada al Array
+    mapaEstudio.forEach(bloque => {
+        bloque.citas = [...new Set(bloque.citas)];
+    });
+    /* if (Object.keys(mapaEstudio).length === 0) {
+        statusDiv.className = 'error'; statusDiv.innerText = 'No se estructuró ninguna pregunta. Revisa el formato.';
+        return;
+    }
+
+    // Limpieza de duplicados interna
+    for (const key in mapaEstudio) {
+        mapaEstudio[key].citas = [...new Set(mapaEstudio[key].citas)];
+    } */
 
     localStorage.setItem('mapaEstudioActivo', JSON.stringify(mapaEstudio));
     todasLasCitasBLB = [...new Set(todasLasCitasBLB)];
@@ -270,14 +319,14 @@ async function generateMapAndExtractVerses() {
 
     try {
         await navigator.clipboard.writeText(blbSearchString);
-        statusDiv.className = 'success'; 
-        statusDiv.innerText = '¡Fase 1 Éxito! Cadena copiada para BLB.';
+        statusDiv.className = 'success'; statusDiv.innerText = '¡Fase 1 Éxito! Cadena copiada para BLB.';
         txtArea.value = ''; 
     } catch (err) {
-        statusDiv.className = 'error'; 
-        statusDiv.innerText = 'Error al escribir en el portapapeles.';
+        statusDiv.className = 'error'; statusDiv.innerText = 'Error al escribir en el portapapeles.';
     }
 }
+
+
 
 
 async function matchBLBTextWithMap() {
@@ -301,19 +350,50 @@ async function matchBLBTextWithMap() {
 
     const lineasBLB = blbTextoCompleto.split('\n').map(l => l.trim()).filter(l => l !== "");
 
-    Object.keys(mapaEstudio).forEach(id => {
-        const nodo = mapaEstudio[id]; nodo.textosCompletosBLB = [];
+    // Sincronización de versículos
+    mapaEstudio.forEach(nodo => {
+        nodo.textosCompletosBLB = [];
         nodo.citas.forEach(cita => {
-            const textoEncontrado = lineasBLB.find(linea => linea.toLowerCase().includes(cita.toLowerCase()));
-            if (textoEncontrado) nodo.textosCompletosBLB.push(textoEncontrado);
+            let textosEncontrados = lineasBLB.filter(linea => linea.toLowerCase().includes(cita.toLowerCase()));
+
+            if (textosEncontrados.length === 0) {
+                const raizMatch = cita.match(/^(\d?\s*[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\.]+ \d+):/);
+                if (raizMatch) {
+                    const raizBusqueda = raizMatch[1].toLowerCase().trim() + ":";
+                    
+                    if (cita.includes('-')) {
+                        const rangoNumeros = cita.match(/:(\d+)-(\d+)/);
+                        if (rangoNumeros) {
+                            const inicio = parseInt(rangoNumeros[1], 10);
+                            const fin = parseInt(rangoNumeros[2], 10);
+                            textosEncontrados = lineasBLB.filter(linea => {
+                                if (!linea.toLowerCase().includes(raizBusqueda)) return false;
+                                const numVerMatch = linea.match(/:(\d+)\s/);
+                                return numVerMatch ? (parseInt(numVerMatch[1], 10) >= inicio && parseInt(numVerMatch[1], 10) <= fin) : false;
+                            });
+                        }
+                    } else {
+                        const verMatch = cita.match(/:(\d+)/);
+                        if (verMatch) {
+                            const numVerBusqueda = ":" + verMatch[1] + " ";
+                            textosEncontrados = lineasBLB.filter(linea => 
+                                linea.toLowerCase().includes(raizBusqueda) && linea.toLowerCase().includes(numVerBusqueda.toLowerCase())
+                            );
+                        }
+                    }
+                }
+            }
+            if (textosEncontrados.length > 0) {
+                textosEncontrados.forEach(linea => nodo.textosCompletosBLB.push(linea));
+            }
         });
     });
 
+    // Construcción del texto consolidado
     let textoFinalConsolidado = principioGuardado;
 
-    Object.keys(mapaEstudio).forEach(id => {
-        const nodo = mapaEstudio[id];
-        textoFinalConsolidado += `${id}. ${nodo.textoOriginal}\n`;
+    mapaEstudio.forEach(nodo => {
+        textoFinalConsolidado += `${nodo.idPregunta}. ${nodo.textoOriginal}\n`;
         if (nodo.textosCompletosBLB.length > 0) {
             const versiculosUnicos = [...new Set(nodo.textosCompletosBLB)];
             versiculosUnicos.forEach(vTxt => { textoFinalConsolidado += `   [BLB] ${vTxt}\n`; });
@@ -324,12 +404,30 @@ async function matchBLBTextWithMap() {
         textoFinalConsolidado += `\n`; 
     });
 
-    // 🎯 INYECTOR DE CIERRE BLINDADO: Se acopla de forma directa al string final
-    textoFinalConsolidado += "[Box] How Would You Answer?\n\n";
-    textoFinalConsolidado += " As described in the Bible, what is meant by “comfort”?\n";
-    textoFinalConsolidado += " How can we comfort others?\n";
-    textoFinalConsolidado += " What can we do when we need comfort? [End of box]\n\n";
-    /*textoFinalConsolidado += "/* lo puedo hacer yo ";*/
+    // 🛠️ CAPTURA DINÁMICA DEL REPASO FINAL (Elimina las preguntas viejas del código)
+    let halladoBoxRepaso = false;
+    let stringBoxRepaso = "[Box] How Would You Answer?\n\n";
+
+    lineasBLB.forEach((linea, index) => {
+        if (linea.toLowerCase().includes("how would you answer") || linea.toLowerCase().includes("cómo respondería")) {
+            halladoBoxRepaso = true;
+            // Capturamos las líneas siguientes hasta encontrar el cierre del box
+            for (let k = index + 1; k < lineasBLB.length; k++) {
+                if (lineasBLB[k].toLowerCase().includes("end of box") || lineasBLB[k].toLowerCase().includes("fin del recuadro")) {
+                    stringBoxRepaso += "[End of box]\n";
+                    break;
+                }
+                if (lineasBLB[k]) stringBoxRepaso += ` ${lineasBLB[k]}\n`;
+            }
+        }
+    });
+
+    // Si encontramos el recuadro real en el texto pegado lo inyectamos, si no, dejamos uno genérico limpio
+    if (halladoBoxRepaso) {
+        textoFinalConsolidado += stringBoxRepaso + "\n";
+    } else {
+        textoFinalConsolidado += "[Box] How Would You Answer?\n\n Preguntas de repaso generales. [End of box]\n\n";
+    }
 
     try {
         await navigator.clipboard.writeText(textoFinalConsolidado.trim());
@@ -341,5 +439,9 @@ async function matchBLBTextWithMap() {
         statusDiv.className = 'error'; statusDiv.innerText = 'Error al escribir el resultado final.';
     }
 }
+
+
+
+
 </script>
 

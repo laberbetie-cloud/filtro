@@ -312,10 +312,38 @@ async function generateMapAndExtractVerses() {
     for (const key in mapaEstudio) {
         mapaEstudio[key].citas = [...new Set(mapaEstudio[key].citas)];
     } */
+// 🌟 NUEVO: CAPTURA DINÁMICA DEL REPASO EN FASE 1 (Desde el texto original del artículo)
+    let boxRepasoOriginal = "[Box] How Would You Answer?\n\n";
+    let halladoBoxF1 = false;
+
+    lines.forEach((linea, index) => {
+        if (linea.toLowerCase().includes("how would you answer") || linea.toLowerCase().includes("cómo respondería")) {
+            halladoBoxF1 = true;
+            for (let k = index + 1; k < lines.length; k++) {
+                let lineaBoxClean = lines[k].trim();
+                if (lineaBoxClean.toLowerCase().includes("end of box") || lineaBoxClean.toLowerCase().includes("fin del recuadro")) {
+                    boxRepasoOriginal += "[End of box]\n";
+                    break;
+                }
+                if (lineaBoxClean) {
+                    // Limpiamos caracteres extraños como el ícono  si ya viene en el texto de origen
+                    let textoPregunta = lineaBoxClean.replace(/^[•-]\s*/, '');
+                    boxRepasoOriginal += ` ${textoPregunta}\n`;
+                }
+            }
+        }
+    });
+
+    if (halladoBoxF1) {
+        localStorage.setItem('boxRepasoGuardado', boxRepasoOriginal);
+    } else {
+        localStorage.setItem('boxRepasoGuardado', "[Box] How Would You Answer?\n\n Preguntas de repaso generales. [End of box]\n\n");
+    }
 
     localStorage.setItem('mapaEstudioActivo', JSON.stringify(mapaEstudio));
     todasLasCitasBLB = [...new Set(todasLasCitasBLB)];
     const blbSearchString = todasLasCitasBLB.join('; ');
+
 
     try {
         await navigator.clipboard.writeText(blbSearchString);
@@ -423,11 +451,15 @@ async function matchBLBTextWithMap() {
     });
 
     // Si encontramos el recuadro real en el texto pegado lo inyectamos, si no, dejamos uno genérico limpio
-    if (halladoBoxRepaso) {
+    /*if (halladoBoxRepaso) {
         textoFinalConsolidado += stringBoxRepaso + "\n";
     } else {
         textoFinalConsolidado += "[Box] How Would You Answer?\n\n Preguntas de repaso generales. [End of box]\n\n";
-    }
+    }*/
+   // 🌟 NUEVO: Inyectamos el Box real recuperado desde la Fase 1
+    const boxFinalReal = localStorage.getItem('boxRepasoGuardado') || "";
+    textoFinalConsolidado += boxFinalReal + "\n";
+
 
     try {
         await navigator.clipboard.writeText(textoFinalConsolidado.trim());

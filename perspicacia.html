@@ -1,165 +1,195 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manual de Supervivencia: Modo Adulto</title>
-    <style>
-        :root {
-            --bg-color: #121214;
-            --card-bg: #1a1a1e;
-            --accent-color: #4ade80; /* Verde éxito */
-            --danger-color: #f87171; /* Rojo costo hundido */
-            --text-main: #e4e4e7;
-            --text-muted: #a1a1aa;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estrategia de Desarrollo Profesional y Autonomía</title>
+  <style>
+    :root {
+      --bg-color: #121214;
+      --card-bg: #1a1a1e;
+      --accent-color: #4ade80; /* Verde éxito */
+      --danger-color: #f87171; /* Rojo costo hundido */
+      --blue-color: #60a5fa;   /* Azul límites */
+      --text-main: #e4e4e7;
+      --text-muted: #a1a1aa;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            line-height: 1.4;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.4;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
 
-        .container {
-            max-width: 480px;
-            width: 100%;
-        }
+    .container {
+      max-width: 480px;
+      width: 100%;
+    }
 
-        h1 {
-            font-size: 24px;
-            font-weight: 800;
-            text-align: center;
-            margin-bottom: 5px;
-            color: #ffffff;
-        }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 5px;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
 
-        .subtitle {
-            text-align: center;
-            color: var(--accent-color);
-            font-size: 14px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 0;
-            margin-bottom: 25px;
-        }
+    .subtitle {
+      text-align: center;
+      color: var(--accent-color);
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 0;
+      margin-bottom: 25px;
+    }
 
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            border: 1px solid #27272a;
-        }
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid #27272a;
+    }
 
-        .card-title {
-            font-size: 16px;
-            font-weight: 700;
-            margin-top: 0;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-top: 0;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-        ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
 
-        li {
-            font-size: 14px;
-            margin-bottom: 10px;
-            padding-left: 20px;
-            position: relative;
-            color: var(--text-main);
-        }
+    li {
+      font-size: 14px;
+      margin-bottom: 12px;
+      padding-left: 20px;
+      position: relative;
+      color: var(--text-main);
+    }
 
-        li::before {
-            content: "•";
-            color: var(--accent-color);
-            font-weight: bold;
-            position: absolute;
-            left: 0;
-        }
+    li:last-child {
+      margin-bottom: 0;
+    }
 
-        li strong {
-            color: #ffffff;
-        }
+    li::before {
+      content: "•";
+      color: var(--accent-color);
+      font-weight: bold;
+      position: absolute;
+      left: 0;
+    }
 
-        .badge-danger::before { color: var(--danger-color); }
-        
-        .footer-text {
-            text-align: center;
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-top: 30px;
-            border-top: 1px solid #27272a;
-            padding-top: 15px;
-        }
+    li strong {
+      color: #ffffff;
+    }
 
-        /* Ajuste rápido para destacar el gran objetivo final */
-        .highlight-card {
-            border: 1px solid var(--accent-color);
-            background: linear-gradient(145deg, #1a1a1e, #142419);
-        }
-    </style>
+    /* Modificadores específicos de color para las viñetas */
+    li.badge-danger::before {
+      color: var(--danger-color);
+    }
+
+    li.badge-blue::before {
+      color: var(--blue-color);
+    }
+
+    .footer-text {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 30px;
+      border-top: 1px solid #27272a;
+      padding-top: 15px;
+      font-style: italic;
+      line-height: 1.5;
+    }
+
+    /* Destacar el gran objetivo final */
+    .highlight-card {
+      border: 1px solid var(--accent-color);
+      background: linear-gradient(145deg, #1a1a1e, #142419);
+    }
+  </style>
 </head>
 <body>
 
 <div class="container">
 
-    <h1>MODO ADULTO ACTIVADO</h1>
-    <p class="subtitle">Estrategia de supervivencia familiar</p>
+  <h1>DIRECCIÓN ADULTA ACTIVADA</h1>
+  <p class="subtitle">Estrategia de desarrollo y convivencia</p>
 
-    <!-- BLOQUE 1: ANALISIS TRANSACCIONAL RAPIDO -->
-    <div class="card">
-        <div class="card-title">🧠 El Filtro Antigritos</div>
-        <ul>
-            <li><strong>Padre Crítico ataca:</strong> Él grita o domina por frustración.</li>
-            <li><strong>Niño Rebelde pierde:</strong> Si respondes con silencio o rabia, el ambiente se vuelve un infierno.</li>
-            <li><strong>Modo Adulto calcula:</strong> Traduce sus críticas en datos limpios. No llores, no pelees, solo calcula.</li>
-        </ul>
-    </div>
+  <!-- BLOQUE 1: COMUNICACIÓN ESTRATÉGICA (AT) -->
+  <div class="card">
+    <div class="card-title">🛡️ El Escudo Profesional</div>
+    <ul>
+      <li><strong>Postura del Entorno:</strong> Exigencias o descalificaciones basadas en el impulso del momento.</li>
+      <li><strong>Reacción Emocional:</strong> Responder desde el enganche o el desgaste directo absorbe tu energía vital.</li>
+      <li><strong>Filtro Táctico (Adulto):</strong> Traduce las críticas en datos operativos objetivos. Mantén el tono neutro y enfócate solo en la gestión práctica del día.</li>
+    </ul>
+  </div>
 
-    <!-- BLOQUE 2: COSTOS HUNDIDOS -->
-    <div class="card">
-        <div class="card-title" style="color: var(--danger-color);">⚓ Costos Hundidos</div>
-        <ul>
-            <li class="badge-danger"><strong>El plato feo:</strong> Si compras comida mala, botar el dinero ya dolió. Comértela a la fuerza solo te enfermará el estómago.</li>
-            <li class="badge-danger"><strong>Las heridas del pasado:</strong> El divorcio, las críticas y la distancia ya pasaron. Vivir con rabia hoy es comerte el plato podrido. Déjalo ir.</li>
-        </ul>
+  <!-- BLOQUE 2: ENFOQUE EN EL PRESENTE (COSTOS HUNDIDOS) -->
+  <div class="card">
+    <div class="card-title" style="color: var(--danger-color);">⚓ Enfoque en el Presente (Costo Hundido)</div>
+    <ul>
+      <li class="badge-danger"><strong>La Analogía del Plato Inadecuado:</strong> Si en un restaurante te sirven un plato en mal estado, obligarte a terminarlo solo para "no perder el dinero" no recupera tu inversión; solo te enferma el estómago.</li>
+      <li class="badge-danger"><strong>El Pasado Inmutable:</strong> Ir a esa casa con la expectativa de cobrar facturas emocionales previas o esperando que el pasado cambie es el equivalente a comerte ese plato a la fuerza. El costo histórico ya ocurrió y es inmodificable.</li>
+      <li class="badge-danger"><strong>La Decisión Adulta:</strong> Dejar el plato en la mesa significa aceptar que ese recurso ya se consumió. Tu enfoque hoy debe ser estrictamente estratégico y orientado al futuro: estás ahí en una alianza de conveniencia mutua donde tú proteges tu capital y tu carrera, y el entorno recibe tu colaboración organizada.</li>
+    </ul>
+    <div style="color: var(--danger-color); font-size: 13px; font-weight: 700; text-align: center; margin-top: 15px; border-top: 1px dashed #27272a; padding-top: 10px; font-style: italic;">
+      "El pasado es costo hundido; el futuro es tu única inversión viable"
     </div>
+  </div>
 
-    <!-- BLOQUE 3: COSTO MARGINAL DE CONVIVENCIA -->
-    <div class="card">
-        <div class="card-title">🧹 Paga tu Estadía</div>
-        <ul>
-            <li><strong>Inquilino invisible:</strong> Tu presencia gasta luz, agua y espacio. Tu desorden eleva el costo de tenerte ahí.</li>
-            <li><strong>La moneda de cambio:</strong> El aseo impecable, el orden y la agilidad para ayudar son el dinero con el que compras tu paz mental.</li>
-            <li><strong>Cero excusas:</strong> No eres un mártir por limpiar. Cooperar es un trato justo por un techo seguro y libre de peligros.</li>
-        </ul>
-    </div>
+  <!-- BLOQUE 3: CONTRATO OPERATIVO (COSTO MARGINAL) -->
+  <div class="card">
+    <div class="card-title">🧹 El Control del Costo Marginal</div>
+    <ul>
+      <li><strong>Ilustración 1 (El invitado en el sofá):</strong> Si invitas a alguien un fin de semana y no colabora, consume tus recursos, usa el baño por horas antes de tu trabajo y altera tu rutina, el costo marginal de su presencia se vuelve tan alto que deseas su pronta partida.</li>
+      <li><strong>Ilustración 2 (El vehículo prestado):</strong> Si pides un automóvil prestado con el tanque lleno y lo devuelves vacío, con suciedad y un desperfecto en el parachoques, generas un costo marginal gigante. La próxima respuesta a cualquier favor será un límite estricto.</li>
+      <li><strong>La Aplicación Real:</strong> En la convivencia, el entorno no evalúa los vínculos afectivos del pasado, sino el impacto del presente. Una presencia que demanda atención, descuida los espacios comunes o ralentiza el apoyo familiar eleva el costo marginal de la estadía.</li>
+      <li><strong>El Inquilino Invisible:</strong> Aportar con agilidad en las tareas de orden, aseo y asistencia familiar reduce tu costo marginal a cero. Cooperar de forma eficiente y oportuna te transforma en una presencia valiosa, asegurando un techo seguro y protegiendo tu paz mental.</li>
+    </ul>
+  </div>
 
-    <!-- BLOQUE 4: EL GRAN OBJETIVO INTERTEMPORAL -->
-    <div class="card highlight-card">
-        <div class="card-title" style="color: var(--accent-color);">🎯 Tu Blindaje del Futuro</div>
-        <ul>
-            <li><strong>La trampa de la comodidad:</strong> Gastar hoy en arriendos caros te deja sin fondos para capacitarte.</li>
-            <li><strong>El costo del orgullo:</strong> El profesional que no ahorra se vuelve esclavo de la necesidad económica.</li>
-            <li><strong>Evita el sacrificio extremo:</strong> Aguanta hoy para financiar tus postgrados. El ahorro te salvará de aceptar mañanas trabajos destructivos en el frío extremo o alturas difíciles.</li>
-        </ul>
-    </div>
+  <!-- BLOQUE 4: GESTIÓN DE LÍMITES (FIRME Y FLEXIBLE) -->
+  <div class="card">
+    <div class="card-title" style="color: var(--blue-color);">⚖️ El Principio de Negociación Bilateral</div>
+    <ul>
+      <li class="badge-blue"><strong>Firme en lo General (El Marco Inamovible):</strong> Establece tus recursos disponibles (como un presupuesto exacto de tiempo o dinero) basándote en la realidad de tu trabajo. Este límite no se discute porque es el que protege tu rendimiento profesional.</li>
+      <li class="badge-blue"><strong>Flexible en lo Específico (La Elección del Entorno):</strong> Dentro de ese marco inamovible, dale al otro la libertad de decidir cómo se utiliza el recurso. Al ofrecer alternativas válidas, evitas la confrontación y mantienes el canal de comunicación abierto.</li>
+      <li class="badge-blue"><strong>La Aplicación Verbal:</strong> Ante una solicitud imprevista, la respuesta óptima es: <em>"Hoy dispongo de exactamente una hora para colaborar. Puedo enfocarla en la tarea A o en la tarea B, según lo que sea más prioritario para ti hoy. ¿Cuál opción prefieres que ejecute?"</em></li>
+    </ul>
+  </div>
 
-    <div class="footer-text">
-        "No dejes que el orgullo de un minuto destruya la libertad de tus próximos 30 años."
-    </div>
+  <!-- BLOQUE 5: VISIÓN INTERTEMPORAL DEL VALOR -->
+  <div class="card highlight-card">
+    <div class="card-title" style="color: var(--accent-color);">🎯 El Apalancamiento de tu Futuro</div>
+    <ul>
+      <li><strong>Maximización del Ahorro Neto:</strong> Evitar costos de mercado en alojamiento te permite acumular el capital necesario para tus metas académicas y profesionales a mediano plazo.</li>
+      <li><strong>Soberanía Financiera:</strong> El ahorro sistemático es el activo que te otorgará la libertad de elegir tus próximos pasos laborales bajo tus propios términos y conveniencia.</li>
+      <li><strong>La Estación de Paso:</strong> Visualizar esta residencia temporal como un proyecto con fecha de término te permite enfocar el esfuerzo actual como el financiamiento directo de tu postgrado y tu futura estabilidad.</li>
+    </ul>
+  </div>
+
+  <div class="footer-text">
+    "La disciplina estratégica de hoy es la inversión directa que financia tu autonomía y libertad para los próximos años."
+  </div>
 
 </div>
 

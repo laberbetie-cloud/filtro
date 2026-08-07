@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador Teológico Trascendental</title>
+    <style>
+        :root {
+            --primary: #1e293b;
+            --secondary: #0f172a;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --text: #334155;
+            --bg: #f8fafc;
+            --ser-color: #0d9488;
+            --hacer-color: #ea580c;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        h1 {
+            color: var(--primary);
+            text-align: center;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+
+        .selector-box {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            background-color: white;
+            font-size: 1rem;
+            color: var(--primary);
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #ffffff;
+            display: none;
+        }
+
+        .card.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+        }
+
+        .badge-ser {
+            background-color: #ccfbf1;
+            color: var(--ser-color);
+        }
+
+        .badge-hacer {
+            background-color: #ffedd5;
+            color: var(--hacer-color);
+        }
+
+        .section-title {
+            font-weight: 700;
+            color: var(--secondary);
+            margin-top: 15px;
+            margin-bottom: 5px;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bible-text {
+            font-style: italic;
+            background-color: #f1f5f9;
+            border-left: 4px solid #94a3b8;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.95rem;
+        }
+
+        .highlight-box {
+            background-color: var(--accent-light);
+            border-left: 4px solid var(--accent);
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Analizador de Invariantes Atómicos</h1>
+    <div class="subtitle">Interpretación en Clave Espiritual y Clasificación Estructurada (EOS)</div>
+
+    <div class="selector-box">
+        <label for="questionSelector">Seleccione una pregunta para analizar:</label>
+        <select id="questionSelector" onchange="showAnalysis()">
+            <option value="">-- Seleccione una opción de la lista --</option>
+            <option value="q1-2">Preguntas 1-2: Diversidad de Decisiones Personales</option>
+            <option value="q3">Pregunta 3: El Origen del Juicio hacia el Hermano</option>
+            <option value="q4-5">Preguntas 4-5: Respuesta ante la Diferencia de Criterio</option>
+            <option value="q6-7">Preguntas 6-7: Escenarios de Juicio Colectivo</option>
+            <option value="q8">Pregunta 8: El Juicio en la Crianza y su Impacto Eclesial</option>
+            <option value="q9">Pregunta 9: El Recordatorio Fundamental de la Autonomía</option>
+            <option value="q10">Pregunta 10: La Limitación de Autoridad (Santiago 4:12)</option>
+            <option value="q11">Pregunta 11: Contribución Activa a la Unidad</option>
+            <option value="q12-13">Preguntas 12-13: Protocolo ante el Tropiezo de un Hermano</option>
+            <option value="q14">Pregunta 14: Promoción de la Unidad en Decisiones Personales</option>
+            <option value="q15-16">Preguntas 15-16: El Rol de los Líderes y Ancianos</option>
+            <option value="q17">Pregunta 17: El Beneficio del Respeto Mutuo</option>
+        </select>
+    </div>
+
+    <!-- CARDS DE CONTENIDO -->
+
+    <!-- Q1-2 -->
+    <div id="q1-2" class="card">
+        <span class="badge badge-ser">Dimensión EOS: SER (Espiritualidad)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«Recibid al débil en la fe, pero no para contender sobre disputas». (Rom 14:1) <br> «Solícitos en guardar la unidad del Espíritu en el vínculo de la paz». (Ef 4:3)</div>
+        
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):</div>
+        <p>La naturaleza progresiva, única y asincrónica de la iluminación del alma humana.</p>
+        
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):</div>
+        <p>La unidad divina no nace de la uniformidad de la mente, sino de la comunión mística de los espíritus.</p>
+        
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">Dios se deleita en la diversidad de la creación; el intento humano de forzar la uniformidad exterior es una resistencia carnal a la multiforme sabiduría del Creador.</div>
+    </div>
+
+    <!-- Q3 -->
+    <div id="q3" class="card">
+        <span class="badge badge-ser">Dimensión EOS: SER (Espiritualidad)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«En todo tiempo ama el amigo, y es como un hermano en tiempo de angustia». (Prov 17:17)</div>
+        
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):</div>
+        <p>La proyección externa de la propia inseguridad espiritual y el deseo de control sobre la alteridad.</p>
+        
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):</div>
+        <p>El amor incondicional es un refugio inalterable que transciende las fluctuaciones de las opiniones humanas.</p>
+        
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">El juicio al hermano es un síntoma de un corazón que ha olvidado que fue perdonado por pura Gracia; revela un vacío crónico de la presencia divina en el ser.</div>
+    </div>
+
+    <!-- Q4-5 -->
+    <div id="q4-5" class="card">
+        <span class="badge badge-hacer">Dimensión EOS: HACER (Ética)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«Mejor es reprensión manifiesta que amor oculto. Fieles son las heridas del que ama...». (Prov 27:5-6) <br> «Sigamos lo que contribuye a la paz y a la mutua edificación». (Rom 14:19)</div>
+        
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):</div>
+        <p>La crisis de confrontación interior al chocar con una alteridad que desafía mis propios paradigmas conductuales.</p>
+        
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):</div>
+        <p>El verdadero amor transciende el sentimentalismo pasivo; es una fuerza capaz de herir para sanar o callar para pacificar.</p>
+        
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">El discernimiento entre el silencio pacificador y la corrección profética requiere una perfecta sincronía con el Espíritu Santo, despojándose de toda ira carnal.</div>
+    </div>
+
+    <!-- Q6-7 -->
+    <div id="q6-7" class="card">
+        <span class="badge badge-hacer">Dimensión EOS: HACER (Ética)</span>
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):</div>
+        <p>La creación de constructos culturales y dogmas humanos que pretenden absolutizar lo meramente relativo.</p>
+        
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">El peligro latente de sacralizar la cultura. Cuando la comunidad confunde sus costumbres mundanas con mandatos celestiales, encarcela y apaga la libertad del Espíritu.</div>
+    </div>
+
+    <!-- Q8 -->
+    <div id="q8" class="card">
+        <span class="badge badge-ser">Dimensión EOS: SER (Espiritualidad)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«Y vosotros, padres, no provoquéis a ira a vuestros hijos, sino criadlos en disciplina y amonestación del Señor». (Ef 6:4)</div>
+        
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):</div>
+        <p>La transferencia del miedo al fracaso personal hacia la fiscalización obsesiva de las vidas ajenas.</p>
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):</div>
+        <p>El liderazgo espiritual (paternidad) es un reflejo de la paternidad divina: nutre, protege y evita la opresión legalista.</p>
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">La crítica hacia otros padres revela un alma que busca en el rendimiento social de sus hijos la salvación o el estatus que solo Dios puede otorgar.</div>
+    </div>
+    <!-- Q6-7 -->
+    <div id="q9" class="card">
+        <span class="badge badge-ser">Dimensión EOS: SER (Espiritualidad)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«Cada uno esté plenamente convencido en su propia mente... Procurad tener quietud, y hacer vuestros propios negocios». (Rom 14:5 / 1 Ts 4:11)</div>
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):La responsabilidad intransferible, solitaria y directa de la criatura frente a su Creador.</div>
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):El mandato sagrado del silencio interior, la introspección y la renuncia voluntaria a la fiscalización del prójimo.</div>
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">El silencio y el "atender lo propio" no son desinterés; son un acto de adoración alta donde reconozco que Dios es el Pastor soberano de mi hermano, no yo.</div>
+    </div>
+    <!-- Q6-7 -->
+    <div id="q10" class="card">
+        <span class="badge badge-ser">Dimensión EOS: SER (Espiritualidad)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«Mirad lo que hacéis; porque no juzgáis en lugar de hombre, sino en lugar de Jehová...». (2 Crón 19:6 / Stg 4:12)</div>
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):La ceguera epistemológica radical del ser humano respecto a los motivos del corazón ajeno.</div>
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):El ejercicio de la justicia terrenal es un préstamo divino sagrado que requiere santo temor y reverencia absoluta.</div>
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">Juzgar definitivamente a otro es cometer idolatría cósmica, pues el ser humano intenta sentarse usurpadoramente en el trono que solo le pertenece al Alfa y la Omega.</div>
+    </div>
+    <!-- Q6-7 -->
+    <div id="q11" class="card">
+        <span class="badge badge-hacer">Dimensión EOS: HACER (Ética)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«Así que, sigamos lo que contribuye a la paz y a la mutua edificación». (Rom 14:19)</div>
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):El esfuerzo intencional y planificado por tejer lazos relacionales basados en el amor incondicional.</div>
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):El imperativo celestial de usar la propia existencia corpórea como un ladrillo vivo para construir al prójimo.</div>
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">La unidad mística de la iglesia es el reflejo terrenal de la Trinidad. Contribuir a ella es sintonizar activamente con la danza del amor perfecto de Dios.</div>
+    </div>
+    <!-- Q6-7 -->
+    <div id="q12-13" class="card">
+        <span class="badge badge-hacer">Dimensión EOS: HACER (Ética)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«Restauradle con espíritu de mansedumbre, considerándote a ti mismo... Cada uno llevará su propia carga». (Gál 6:1, 5)</div>
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):El deber de rescate espiritual mediante la compasión simétrica y consciente de la propia fragilidad.</div>
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):La ley eterna de la corresponsabilidad espiritual, operada bajo una estricta rendición de cuentas individual.</div>
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">Ver el pecado ajeno no como una oportunidad para condenar, sino como un llamado urgente a la intercesión y a la sanación, sabiendo que toda la humanidad comparte el mismo barro.</div>
+    </div>
+    <!-- Q6-7 -->
+    <div id="q14" class="card">
+        <span class="badge badge-hacer">Dimensión EOS: HACER (Ética)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«Pecando así contra los hermanos... pecáis contra Cristo. Por lo cual, si la comida es a mi hermano ocasión de caer, no comeré carne jamás...». (1 Cor 8:12, 13)</div>
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):La autolimitación voluntaria del derecho propio por la salvaguarda y protección espiritual del prójimo.</div>
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):La interconexión mística del Cuerpo de Cristo: herir la conciencia del hermano es rasgar la carne misma del Salvador.</div>
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">La verdadera libertad es la capacidad dada por Dios para renunciar a mis derechos por amor. Es la imitación pura de la Kénosis (el vaciamiento) de Cristo.</div>
+    </div>
+    <!-- Q6-7 -->
+    <div id="q15-16" class="card">
+        <span class="badge badge-ser">Dimensión EOS: SER (Espiritualidad)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«Para que en nosotros aprendáis a no pensar más de lo que está escrito, no sea que por causa de uno os envanezcáis unos contra otros». (1 Cor 4:6)</div>
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):La sumisión del liderazgo a la revelación eterna y la renuncia absoluta al caudillismo intelectual o personal.</div>
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):La Palabra escrita es el ancla que previene la inflación del ego y las facciones destructivas del orgullo humano.</div>
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">El liderazgo en el Reino no es una posición de poder, sino un altar de sacrificio donde el ego del líder muere diariamente para que la verdad divina brille de forma colectiva.</div>
+    </div>
+    <!-- Q6-7 -->
+    <div id="q17" class="card">
+        <span class="badge badge-ser">Dimensión EOS: SER (Espiritualidad)</span>
+        <div class="section-title">📖 Base Escritural:</div>
+        <div class="bible-text">«¡Mirad cuán bueno y cuán delicioso es habitar los hermanos juntos en armonía!» (Sal 133:1)  «Bienaventurados los pacificadores...» (Mat 5:9)</div>
+        <div class="section-title">⚛️ Invariante Atómico (Pregunta):La herencia de plenitud, gozo y paz existencial que resulta de una convivencia comunitaria sagrada.</div>
+        <div class="section-title">📜 Invariante Atómico (Principio Bíblico):La paz comunitaria atrae la unción, la bendición y la filiación divina directa sobre la geografía terrenal.</div>
+        <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+        <div class="highlight-box">Cuando los creyentes respetan la libertad de los demás, la atmósfera eclesial se transforma en un pedazo del Cielo en la Tierra, permitiendo que lo eterno irrumpa en el tiempo presente.</div>
+        <div class="highlight-box">Análisis Hermenéutico Trascendental •Teología, Filosofía y Comunicación Efectiva.</div>
+    </div>
+</div> <!-- Cierre de .container -->
+
+
+<script>
+    function showAnalysis() {
+        // Ocultar todas las tarjetas primero
+        const cards = document.querySelectorAll('.card');
+        cards.forEach(card => card.classList.remove('active'));
+        // Obtener el valor seleccionado
+        const selectedValue = document.getElementById('questionSelector').value;
+        // Si hay una selección válida, mostrar la tarjeta correspondiente
+        if (selectedValue) {const activeCard = document.getElementById(selectedValue);
+            if (activeCard) {activeCard.classList.add('active');
+        }
+    }
+}
+</script>
+</body>
+</html>

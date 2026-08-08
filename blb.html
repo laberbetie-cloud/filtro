@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador de Invariantes Atómicos</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-main: #2c3e50;
+            --primary: #2980b9;
+            --accent-ser: #8e44ad;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            text-align: center;
+            color: #1a252f;
+            margin-bottom: 5px;
+            font-size: 1.8rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 25px;
+            font-size: 1rem;
+            font-style: italic;
+        }
+
+        .io-panel {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border: 2px dashed #cbd5e0;
+            text-align: center;
+        }
+
+        .io-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 0.95rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #3498db;
+        }
+
+        .selector-box {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: #fff;
+            font-size: 1rem;
+            color: var(--text-main);
+            outline: none;
+        }
+
+        .card {
+            display: none;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .card.active {
+            display: block;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 15px;
+            background-color: var(--accent-ser);
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-top: 15px;
+            color: #34495e;
+            font-size: 0.95rem;
+        }
+
+        .raw-question {
+            font-style: italic;
+            background: #f8fafc;
+            border-left: 4px solid #cbd5e0;
+            padding: 12px;
+            margin: 5px 0 15px 0;
+            border-radius: 4px;
+            color: #4a5568;
+        }
+
+        .editable-field {
+            width: 100%;
+            min-height: 60px;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-family: inherit;
+            resize: vertical;
+            box-sizing: border-box;
+            background-color: #fff;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Analizador de Invariantes Atómicos</h1>
+    <div class="subtitle">Interpretación en Clave Espiritual y Clasificación Estructurada (EOS)</div>
+
+    <div class="io-panel">
+        <div class="io-title">📋 Carga tu nuevo portapapeles estructurado con versículos secuenciales</div>
+        <button onclick="readFromClipboard()">Pegar y Vincular Versículos Correctamente</button>
+    </div>
+
+    <div class="selector-box">
+        <label for="questionSelector">Seleccione una pregunta para analizar:</label>
+        <select id="questionSelector" onchange="showAnalysis()">
+            <option value="">-- Seleccione una opción de la lista --</option>
+        </select>
+    </div>
+
+    <div id="cardsContainer"></div>
+</div>
+
+<script>
+    function showAnalysis() {
+        const cards = document.querySelectorAll('.card');
+        cards.forEach(card => card.classList.remove('active'));
+        
+        const selectedValue = document.getElementById('questionSelector').value;
+        if (selectedValue) {
+            const activeCard = document.getElementById(selectedValue);
+            if (activeCard) activeCard.classList.add('active');
+        }
+    }
+
+    async function readFromClipboard() {
+        try {
+            const text = await navigator.clipboard.readText();
+            const lines = text.split('\n');
+            const elements = [];
+            let currentItem = null;
+
+            lines.forEach(line => {
+                let cleaned = line.trim();
+                if (!cleaned) return;
+
+                // 1. Detectar si la línea es una pregunta numerada (ej: 1-2. o 3.)
+                if (/^\d+([\-\d]*)\./.test(cleaned)) {
+                    if (currentItem) elements.push(currentItem);
+
+                    const matchNum = cleaned.match(/^\d+([\-\d]*)/)[0];
+                    const questionText = cleaned.replace(/^\d+([\-\d]*)\.\s*/, '');
+
+                    currentItem = {
+                        id: 'q' + matchNum,
+                        title: `Pregunta ${matchNum}: ${questionText.substring(0, 45)}...`,
+                        rawQuestion: questionText,
+                        assignedVerses: []
+                    };
+                } 
+                // 2. Si la línea empieza con [BLB], pertenece al bloque de la última pregunta encontrada
+                else if (cleaned.startsWith('[BLB]') && currentItem) {
+                    // Extraer el código de la cita (ej: Eph 4:3) para el sufijo final
+                    const citaMatch = cleaned.match(/\[([A-Za-z0-9\s:]+)\s+EM\]/i);
+                    let cleanVerse = cleaned.replace('[BLB]', '').trim();
+                    
+                    if (citaMatch) {
+                        const codeKey = citaMatch[1].trim();
+                        // Remover la etiqueta original [Cita EM] del texto limpio
+                        cleanVerse = cleanVerse.replace(/\[.*EM\]/i, '').trim();
+                        // Quitar comillas repetidas al inicio/final si las hubiera
+                        cleanVerse = cleanVerse.replace(/^"/, '').replace(/"$/, '');
+                        // Formato final estético: «Texto» (Cita)
+                        cleanVerse = `«${cleanVerse}» (${codeKey})`;
+                    }
+                    
+                    currentItem.assignedVerses.push(cleanVerse);
+                }
+            });
+
+            // Empujar el último bloque procesado
+            if (currentItem) elements.push(currentItem);
+
+            if (elements.length > 0) {
+                buildDOM(elements);
+            } else {
+                alert('No se encontraron preguntas estructurales en tu portapapeles.');
+            }
+
+        } catch (err) {
+            alert('Asegúrate de dar permisos para acceder al portapapeles.');
+        }
+    }
+
+    function buildDOM(elements) {
+        const selector = document.getElementById('questionSelector');
+        const container = document.getElementById('cardsContainer');
+        
+        selector.innerHTML = '<option value="">-- Seleccione una opción de la lista --</option>';
+        container.innerHTML = '';
+
+        elements.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = item.title;
+            selector.appendChild(opt);
+
+            const card = document.createElement('div');
+            card.id = item.id;
+            card.className = 'card';
+
+            const totalBibleText = item.assignedVerses.join('\n\n');
+
+            card.innerHTML = `
+                <span class="badge">Dimensión EOS: SER (Espiritualidad)</span>
+                
+                <div class="section-title">❓ Pregunta Original (Guía):</div>
+                <div class="raw-question">${item.rawQuestion}</div>
+
+                <div class="section-title">📖 Base Escritural:</div>
+                <textarea class="editable-field" placeholder="No hay versículos asignados para esta sección...">${totalBibleText}</textarea>
+
+                <div class="section-title">⚛️ Invariante Atómico (Pregunta):</div>
+                <textarea class="editable-field" placeholder="La raíz de la problemática humana..."></textarea>
+                
+                <div class="section-title">📜 Invariante Atómico (Principio Bíblico):</div>
+                <textarea class="editable-field" placeholder="La ley divina eterna aplicada..."></textarea>
+                
+                <div class="section-title">✨ Clave Espiritual (Lo Eterno):</div>
+                <textarea class="editable-field" placeholder="Revelación mística trascendental..."></textarea>
+            `;
+            container.appendChild(card);
+        });
+
+        alert(`¡Análisis completado! ${elements.length} tarjetas sincronizadas en tiempo real.`);
+    }
+</script>
+
+</body>
+</html>
